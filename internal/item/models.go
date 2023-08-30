@@ -20,4 +20,10 @@ type AnalyticsItem struct {
 	DaoNewVote bool      `json:"dao_new_vote"`
 }
 
+type MonthlyActiveUser struct {
+	PeriodStarted  time.Time
+	ActiveUsers    uint64
+	NewActiveUsers uint64
+}
+
 type EventType string

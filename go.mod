@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/goverland-labs/analytics-api v0.0.0-20230829102656-c0822567ce2f
-	github.com/goverland-labs/platform-events v0.1.4
+	github.com/goverland-labs/platform-events v0.1.6
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/nats-io/nats.go v1.28.0

@@ -18,6 +18,7 @@ import (
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/migration"
 	"github.com/goverland-labs/analytics-service/internal/proposal"
+	"github.com/goverland-labs/analytics-service/internal/vote"
 	"github.com/goverland-labs/analytics-service/pkg/health"
 	"github.com/goverland-labs/analytics-service/pkg/prometheus"
 )
@@ -130,6 +131,11 @@ func (a *Application) initServices() error {
 		return fmt.Errorf("init proposal: %w", err)
 	}
 
+	err = a.initVoteConsumer(nc)
+	if err != nil {
+		return fmt.Errorf("init vote: %w", err)
+	}
+
 	err = a.initAPI()
 	if err != nil {
 		return fmt.Errorf("init api: %w", err)
@@ -145,6 +151,17 @@ func (a *Application) initProposalConsumer(nc *nats.Conn) error {
 	}
 
 	a.manager.AddWorker(process.NewCallbackWorker("proposal-consumer", cs.Start))
+
+	return nil
+}
+
+func (a *Application) initVoteConsumer(nc *nats.Conn) error {
+	cs, err := vote.NewConsumer(nc, a.service)
+	if err != nil {
+		return fmt.Errorf("vote consumer: %w", err)
+	}
+
+	a.manager.AddWorker(process.NewCallbackWorker("vote-consumer", cs.Start))
 
 	return nil
 }

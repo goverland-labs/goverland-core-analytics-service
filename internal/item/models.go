@@ -9,6 +9,7 @@ const (
 	None              EventType = ""
 	ProposalCreated   EventType = "proposal_created"
 	ProposalSucceeded EventType = "proposal_succeeded"
+	VoteCreated       EventType = "vote_created"
 )
 
 type AnalyticsItem struct {

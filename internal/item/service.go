@@ -28,9 +28,9 @@ func NewService(p Publisher, r DataProvider) (*Service, error) {
 	}, nil
 }
 
-func (s *Service) HandleItem(ctx context.Context, ai *AnalyticsItem) error {
+func (s *Service) HandleItem(ctx context.Context, ai any) error {
 	if err := s.events.PublishJSON(ctx, "analytics", ai); err != nil {
-		log.Error().Err(err).Msgf("publish event #%s #%s", ai.ProposalID, ai.Voter)
+		log.Error().Err(err).Msgf("publish event")
 	}
 
 	return nil
@@ -49,4 +49,19 @@ func (s *Service) ConvertToAnalyticsItem(pl pevents.ProposalPayload, et EventTyp
 		Voter:      "",
 		DaoNewVote: false,
 	}
+}
+
+func (s *Service) ConvertVotesToAnalyticsItem(vp pevents.VotesPayload) []*AnalyticsItem {
+	res := make([]*AnalyticsItem, len(vp))
+	for i, item := range vp {
+		res[i] = &AnalyticsItem{
+			DaoID:      item.DaoID,
+			CreatedAt:  time.Unix(int64(item.Created), 0).UTC(),
+			ProposalID: item.ID,
+			EventType:  VoteCreated,
+			Voter:      item.Voter,
+		}
+	}
+
+	return res
 }

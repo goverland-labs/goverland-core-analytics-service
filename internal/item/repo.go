@@ -18,7 +18,8 @@ func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser,
 	err := r.db.Raw(`select date_trunc('month', created_at) as PeriodStarted, 
        						count(distinct voter) as ActiveUsers, countIf(distinct voter, dao_new_vote) as NewActiveUsers 
 						from analytics_view where event_type = 'vote_created' and dao_id = ? 
-						                    group by PeriodStarted order by PeriodStarted`, id).Scan(&res).Error
+						                    group by PeriodStarted order by PeriodStarted 
+						                    with fill step interval 1 month`, id).Scan(&res).Error
 
 	return res, err
 }

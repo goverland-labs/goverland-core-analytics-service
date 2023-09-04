@@ -18,7 +18,6 @@ type AnalyticsItem struct {
 	ProposalID string    `json:"proposal_id"`
 	EventType  EventType `json:"event_type"`
 	Voter      string    `json:"voter"`
-	DaoNewVote bool      `json:"dao_new_vote"`
 }
 
 type MonthlyActiveUser struct {

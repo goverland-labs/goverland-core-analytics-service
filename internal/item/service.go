@@ -47,7 +47,6 @@ func (s *Service) ConvertToAnalyticsItem(pl pevents.ProposalPayload, et EventTyp
 		ProposalID: pl.ID,
 		EventType:  et,
 		Voter:      "",
-		DaoNewVote: false,
 	}
 }
 

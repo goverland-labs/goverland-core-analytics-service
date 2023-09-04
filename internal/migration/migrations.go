@@ -19,8 +19,7 @@ func initDatabase(conn *gorm.DB, params map[string]string) error {
                 created_at   DateTime,
                 proposal_id  String,
                 event_type	 String,
-                voter		 String,
-                dao_new_vote Bool
+                voter		 String
             ) 	ENGINE = NATS
 				SETTINGS nats_url = '%s', nats_subjects = 'analytics', nats_format = 'JSONEachRow',
 				date_time_input_format = 'best_effort'`, params["nats_url"]),
@@ -30,8 +29,7 @@ func initDatabase(conn *gorm.DB, params map[string]string) error {
 				created_at   DateTime,
 				proposal_id  String,
 				event_type	 String,
-				voter		 String,
-				dao_new_vote Bool
+				voter		 String
 			)
 				ENGINE = MergeTree
 				order by (dao_id, created_at)

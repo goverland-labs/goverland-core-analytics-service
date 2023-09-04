@@ -15,11 +15,15 @@ func NewRepo(db *gorm.DB) *Repo {
 
 func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error) {
 	var res []*MonthlyActiveUser
-	err := r.db.Raw(`select date_trunc('month', created_at) as PeriodStarted, 
-       						count(distinct voter) as ActiveUsers, countIf(distinct voter, dao_new_vote) as NewActiveUsers 
-						from analytics_view where event_type = 'vote_created' and dao_id = ? 
-						                    group by PeriodStarted order by PeriodStarted 
-						                    with fill step interval 1 month`, id).Scan(&res).Error
+	err := r.db.Raw(`select date_trunc('month', v.created_at) as PeriodStarted,
+       				count(distinct v.voter) as ActiveUsers, countIf(distinct v.voter, v.created_at = firstVote) as NewActiveUsers from analytics_view v 
+       		    	inner join
+					(select min(created_at) as firstVote, voter from analytics_view
+					where dao_id = ? and event_type = 'vote_created' group by voter) votes
+					on v.voter = votes.voter where v.dao_id = ? and event_type = 'vote_created'
+					group by PeriodStarted
+					order by PeriodStarted
+					with fill step interval 1 month`, id, id).Scan(&res).Error
 
 	return res, err
 }

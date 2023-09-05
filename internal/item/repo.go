@@ -15,7 +15,7 @@ func NewRepo(db *gorm.DB) *Repo {
 
 func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error) {
 	var res []*MonthlyActiveUser
-	err := r.db.Raw(`select date_trunc('month', v.created_at) as PeriodStarted,
+	err := r.db.Raw(`select toStartOfMonth(v.created_at) as PeriodStarted,
        				count(distinct v.voter) as ActiveUsers, countIf(distinct v.voter, v.created_at = firstVote) as NewActiveUsers from analytics_view v 
        		    	inner join
 					(select min(created_at) as firstVote, voter from analytics_view

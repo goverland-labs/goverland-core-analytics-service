@@ -5,7 +5,6 @@ import (
 	"github.com/google/uuid"
 	pevents "github.com/goverland-labs/platform-events/events/core"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type Publisher interface {
@@ -43,7 +42,7 @@ func (s *Service) GetMonthlyActiveUsers(id uuid.UUID) ([]*MonthlyActiveUser, err
 func (s *Service) ConvertToAnalyticsItem(pl pevents.ProposalPayload, et EventType) *AnalyticsItem {
 	return &AnalyticsItem{
 		DaoID:      pl.DaoID,
-		CreatedAt:  time.Unix(int64(pl.Created), 0).UTC(),
+		CreatedAt:  pl.Created,
 		ProposalID: pl.ID,
 		EventType:  et,
 		Voter:      "",
@@ -55,7 +54,7 @@ func (s *Service) ConvertVotesToAnalyticsItem(vp pevents.VotesPayload) []*Analyt
 	for i, item := range vp {
 		res[i] = &AnalyticsItem{
 			DaoID:      item.DaoID,
-			CreatedAt:  time.Unix(int64(item.Created), 0).UTC(),
+			CreatedAt:  item.Created,
 			ProposalID: item.ID,
 			EventType:  VoteCreated,
 			Voter:      item.Voter,

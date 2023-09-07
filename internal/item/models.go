@@ -12,13 +12,13 @@ const (
 	VoteCreated       EventType = "vote_created"
 )
 
-var BucketMinVotes = map[uint8]uint64{
-	1: 1,
-	2: 2,
-	3: 3,
-	4: 5,
-	5: 8,
-	6: 13,
+var BucketMinVotes = map[uint8]string{
+	1: "1",
+	2: "2",
+	3: "3-4",
+	4: "5-7",
+	5: "8-12",
+	6: "13+",
 }
 
 type AnalyticsItem struct {

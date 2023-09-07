@@ -32,7 +32,7 @@ func initDatabase(conn *gorm.DB, params map[string]string) error {
 				voter		 String
 			)
 				ENGINE = MergeTree
-				order by (dao_id, created_at)
+				order by dao_id
 				AS
 				SELECT *
 				FROM analytics`,

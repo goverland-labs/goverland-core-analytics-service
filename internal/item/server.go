@@ -84,8 +84,8 @@ func convertBucketsToAPI(buckets []*Bucket) []*internalapi.VoterGroup {
 	res := make([]*internalapi.VoterGroup, len(buckets))
 	for i, bucket := range buckets {
 		res[i] = &internalapi.VoterGroup{
-			MinVotes: BucketMinVotes[bucket.GroupId],
-			Voters:   bucket.Voters,
+			Votes:  BucketMinVotes[bucket.GroupId],
+			Voters: bucket.Voters,
 		}
 	}
 

@@ -13,6 +13,7 @@ type Publisher interface {
 
 type DataProvider interface {
 	GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error)
+	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
 }
 
 type Service struct {
@@ -37,6 +38,10 @@ func (s *Service) HandleItem(ctx context.Context, ai any) error {
 
 func (s *Service) GetMonthlyActiveUsers(id uuid.UUID) ([]*MonthlyActiveUser, error) {
 	return s.repo.GetMonthlyActiveUsersByDaoId(id)
+}
+
+func (s *Service) GetVoterBuckets(id uuid.UUID) ([]*Bucket, error) {
+	return s.repo.GetVoterBucketsByDaoId(id)
 }
 
 func (s *Service) ConvertToAnalyticsItem(pl pevents.ProposalPayload, et EventType) *AnalyticsItem {

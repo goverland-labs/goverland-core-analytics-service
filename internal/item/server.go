@@ -23,14 +23,10 @@ func NewServer(service *Service) *Server {
 	}
 }
 
-func (s *Server) GetMonthlyActiveUsers(ctx context.Context, req *internalapi.MonthlyActiveUsersRequest) (*internalapi.MonthlyActiveUsersResponse, error) {
-	if req.GetDaoId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "invalid dao ID")
-	}
-
-	id, err := uuid.Parse(req.GetDaoId())
+func (s *Server) GetMonthlyActiveUsers(_ context.Context, req *internalapi.MonthlyActiveUsersRequest) (*internalapi.MonthlyActiveUsersResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid dao ID format")
+		return nil, err
 	}
 
 	users, err := s.service.GetMonthlyActiveUsers(id)
@@ -43,6 +39,34 @@ func (s *Server) GetMonthlyActiveUsers(ctx context.Context, req *internalapi.Mon
 	}, nil
 }
 
+func (s *Server) GetVoterBuckets(_ context.Context, req *internalapi.VoterBucketsRequest) (*internalapi.VoterBucketsResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	buckets, err := s.service.GetVoterBuckets(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no votes for this dao ID")
+	}
+
+	return &internalapi.VoterBucketsResponse{
+		Groups: convertBucketsToAPI(buckets),
+	}, nil
+}
+
+func getDaoUuid(daoId string) (uuid.UUID, error) {
+	if daoId == "" {
+		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")
+	}
+
+	id, err := uuid.Parse(daoId)
+	if err != nil {
+		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID format")
+	}
+	return id, nil
+}
+
 func convertMonthlyActiveUsersToAPI(users []*MonthlyActiveUser) []*internalapi.MonthlyActiveUsers {
 	res := make([]*internalapi.MonthlyActiveUsers, len(users))
 	for i, musers := range users {
@@ -50,6 +74,18 @@ func convertMonthlyActiveUsersToAPI(users []*MonthlyActiveUser) []*internalapi.M
 			PeriodStarted:  timestamppb.New(musers.PeriodStarted),
 			ActiveUsers:    musers.ActiveUsers,
 			NewActiveUsers: musers.NewActiveUsers,
+		}
+	}
+
+	return res
+}
+
+func convertBucketsToAPI(buckets []*Bucket) []*internalapi.VoterGroup {
+	res := make([]*internalapi.VoterGroup, len(buckets))
+	for i, bucket := range buckets {
+		res[i] = &internalapi.VoterGroup{
+			MinVotes: BucketMinVotes[bucket.GroupId],
+			Voters:   bucket.Voters,
 		}
 	}
 

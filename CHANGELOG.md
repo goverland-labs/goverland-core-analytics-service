@@ -7,9 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-###
-- Added monthly active users, voter buckets requests.
+## [0.0.1] - 2023-09-08
 
 ### Added
-- Init
-
+- Initialized skeleton app 
+- Added monthly active users, voter buckets requests.

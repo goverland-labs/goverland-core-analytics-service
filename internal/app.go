@@ -3,6 +3,8 @@ package internal
 import (
 	"fmt"
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
+	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
 	"github.com/nats-io/nats.go"
 	"github.com/s-larionov/process-manager"
 	gormCh "gorm.io/driver/clickhouse"
@@ -16,6 +18,7 @@ import (
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/migration"
 	"github.com/goverland-labs/analytics-service/internal/proposal"
+	"github.com/goverland-labs/analytics-service/internal/vote"
 	"github.com/goverland-labs/analytics-service/pkg/health"
 	"github.com/goverland-labs/analytics-service/pkg/prometheus"
 )
@@ -25,6 +28,9 @@ type Application struct {
 	manager *process.Manager
 	cfg     config.App
 	db      *gorm.DB
+
+	repo    *item.Repo
+	service *item.Service
 }
 
 func NewApplication(cfg config.App) (*Application, error) {
@@ -93,6 +99,7 @@ func (a *Application) initDB() error {
 	}
 
 	a.db = db
+	a.repo = item.NewRepo(a.db)
 
 	return err
 }
@@ -113,26 +120,57 @@ func (a *Application) initServices() error {
 		return err
 	}
 
-	err = a.initProposalConsumer(nc, pb)
+	service, err := item.NewService(pb, a.repo)
+	if err != nil {
+		return fmt.Errorf("service: %w", err)
+	}
+	a.service = service
+
+	err = a.initProposalConsumer(nc)
 	if err != nil {
 		return fmt.Errorf("init proposal: %w", err)
+	}
+
+	err = a.initVoteConsumer(nc)
+	if err != nil {
+		return fmt.Errorf("init vote: %w", err)
+	}
+
+	err = a.initAPI()
+	if err != nil {
+		return fmt.Errorf("init api: %w", err)
 	}
 
 	return nil
 }
 
-func (a *Application) initProposalConsumer(nc *nats.Conn, pb *communicate.Publisher) error {
-	service, err := item.NewService(pb)
-	if err != nil {
-		return fmt.Errorf("proposal service: %w", err)
-	}
-
-	cs, err := proposal.NewConsumer(nc, service)
+func (a *Application) initProposalConsumer(nc *nats.Conn) error {
+	cs, err := proposal.NewConsumer(nc, a.service)
 	if err != nil {
 		return fmt.Errorf("proposal consumer: %w", err)
 	}
 
 	a.manager.AddWorker(process.NewCallbackWorker("proposal-consumer", cs.Start))
+
+	return nil
+}
+
+func (a *Application) initVoteConsumer(nc *nats.Conn) error {
+	cs, err := vote.NewConsumer(nc, a.service)
+	if err != nil {
+		return fmt.Errorf("vote consumer: %w", err)
+	}
+
+	a.manager.AddWorker(process.NewCallbackWorker("vote-consumer", cs.Start))
+
+	return nil
+}
+
+func (a *Application) initAPI() error {
+	srv := grpcsrv.NewGrpcServer()
+	internalapi.RegisterAnalyticsServer(srv, item.NewServer(a.service))
+
+	a.manager.AddWorker(grpcsrv.NewGrpcServerWorker("gRPC server", srv, a.cfg.InternalAPI.Bind))
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package proposal
+package dao
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	groupName = "proposal"
+	groupName = "dao"
 )
 
 type closable interface {
@@ -39,21 +39,28 @@ func NewConsumer(nc *nats.Conn, s *item.Service) (*Consumer, error) {
 	return c, nil
 }
 
-func (c *Consumer) handler(action string) pevents.ProposalHandler {
-	return func(payload pevents.ProposalPayload) error {
+func (c *Consumer) handler(action string) pevents.DaoHandler {
+	return func(payload pevents.DaoPayload) error {
 		var err error
 		defer func(start time.Time) {
 			metricHandleHistogram.
-				WithLabelValues("handle_proposal", metrics.ErrLabelValue(err)).
+				WithLabelValues("handle_dao", metrics.ErrLabelValue(err)).
 				Observe(time.Since(start).Seconds())
 		}(time.Now())
-
-		err = c.service.HandleItem(context.TODO(), c.service.ConvertProposalToAnalyticsItem(payload, action))
-		if err != nil {
-			log.Error().Err(err).Msg("process proposal")
+		eventType := item.None
+		switch action {
+		case pevents.SubjectDaoCreated:
+			eventType = item.DaoCreated
+		case pevents.SubjectDaoUpdated:
+			eventType = item.DaoUpdated
 		}
 
-		log.Debug().Msgf("proposal was processed: %s", payload.ID)
+		err = c.service.HandleItem(context.TODO(), c.service.ConvertDaoToAnalyticsItem(payload, eventType))
+		if err != nil {
+			log.Error().Err(err).Msg("process dao")
+		}
+
+		log.Debug().Msgf("dao was processed: %s", payload.ID)
 
 		return err
 	}
@@ -61,9 +68,7 @@ func (c *Consumer) handler(action string) pevents.ProposalHandler {
 
 func (c *Consumer) Start(ctx context.Context) error {
 	group := config.GenerateGroupName(groupName)
-	for _, subj := range []string{pevents.SubjectProposalCreated, pevents.SubjectProposalUpdated,
-		pevents.SubjectProposalUpdatedState, pevents.SubjectProposalVotingStarted, pevents.SubjectProposalVotingEnded, pevents.SubjectProposalVotingQuorumReached,
-		pevents.SubjectProposalVotingStartsSoon, pevents.SubjectProposalVotingEndsSoon} {
+	for _, subj := range []string{pevents.SubjectDaoCreated, pevents.SubjectDaoUpdated} {
 		consumer, err := client.NewConsumer(ctx, c.conn, group, subj, c.handler(subj))
 		if err != nil {
 			return fmt.Errorf("consume for %s/%s: %w", group, subj, err)
@@ -72,7 +77,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 		c.consumers = append(c.consumers, consumer)
 	}
 
-	log.Info().Msg("proposal consumers is started")
+	log.Info().Msg("dao consumers are started")
 
 	// todo: handle correct stopping the consumer by context
 	<-ctx.Done()
@@ -82,7 +87,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 func (c *Consumer) stop() error {
 	for _, cs := range c.consumers {
 		if err := cs.Close(); err != nil {
-			log.Error().Err(err).Msg("cant close proposal consumer")
+			log.Error().Err(err).Msg("cant close dao consumer")
 		}
 	}
 

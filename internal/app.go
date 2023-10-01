@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
+	"github.com/goverland-labs/analytics-service/internal/dao"
 	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
 	"github.com/nats-io/nats.go"
 	"github.com/s-larionov/process-manager"
@@ -126,6 +127,11 @@ func (a *Application) initServices() error {
 	}
 	a.service = service
 
+	err = a.initDaoConsumer(nc)
+	if err != nil {
+		return fmt.Errorf("init dao: %w", err)
+	}
+
 	err = a.initProposalConsumer(nc)
 	if err != nil {
 		return fmt.Errorf("init proposal: %w", err)
@@ -140,6 +146,17 @@ func (a *Application) initServices() error {
 	if err != nil {
 		return fmt.Errorf("init api: %w", err)
 	}
+
+	return nil
+}
+
+func (a *Application) initDaoConsumer(nc *nats.Conn) error {
+	cs, err := dao.NewConsumer(nc, a.service)
+	if err != nil {
+		return fmt.Errorf("dao consumer: %w", err)
+	}
+
+	a.manager.AddWorker(process.NewCallbackWorker("dao-consumer", cs.Start))
 
 	return nil
 }

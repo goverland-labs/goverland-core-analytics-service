@@ -24,7 +24,7 @@ func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser,
 		    SELECT min(created_at) AS firstVote,
 		           voter
 		    FROM votes_raw
-		    WHERE dao_id = ?π
+		    WHERE dao_id = ?
 		    GROUP BY voter
 		) votes ON v.voter = votes.voter
 		WHERE v.dao_id = ? 

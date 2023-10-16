@@ -7,21 +7,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type Migrator func(conn *gorm.DB, params map[string]string) error
+type Migrator func(conn *gorm.DB) error
 
 type Migration struct {
 	ID        uint `gorm:"primarykey"`
 	CreatedAt time.Time
-	Version   uint8             `gorm:"unique"`
-	Migrator  Migrator          `gorm:"-"`
-	Params    map[string]string `gorm:"-"`
+	Version   uint8    `gorm:"unique"`
+	Migrator  Migrator `gorm:"-"`
 }
 
-func NewMigration(version uint8, migrator Migrator, params map[string]string) *Migration {
+func GetAllMigrations() []*Migration {
+	return []*Migration{
+		NewMigration(1, Migration001InitTables),
+		NewMigration(2, Migration002AddEventTime),
+	}
+}
+
+func NewMigration(version uint8, migrator Migrator) *Migration {
 	return &Migration{
 		Version:  version,
 		Migrator: migrator,
-		Params:   params,
 	}
 }
 
@@ -60,7 +65,7 @@ func ApplyMigrations(conn *gorm.DB, migrations []*Migration) error {
 			continue
 		}
 
-		if err := m.Migrator(conn, m.Params); err != nil {
+		if err := m.Migrator(conn); err != nil {
 			return err
 		}
 

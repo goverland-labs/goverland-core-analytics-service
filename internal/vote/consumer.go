@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/goverland-labs/analytics-service/internal/config"
-	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/metrics"
+	"github.com/goverland-labs/analytics-service/pkg/helpers"
 )
 
 const (
@@ -23,20 +23,22 @@ type closable interface {
 	Close() error
 }
 
-type Consumer struct {
-	conn      *nats.Conn
-	service   *item.Service
-	consumers []closable
+type storage interface {
+	Store(group uint32, items ...*pevents.VotePayload) error
 }
 
-func NewConsumer(nc *nats.Conn, s *item.Service) (*Consumer, error) {
-	c := &Consumer{
-		conn:      nc,
-		service:   s,
-		consumers: make([]closable, 0),
-	}
+type Consumer struct {
+	conn      *nats.Conn
+	consumers []closable
+	storage   storage
+}
 
-	return c, nil
+func NewConsumer(nc *nats.Conn, st storage) *Consumer {
+	return &Consumer{
+		conn:      nc,
+		consumers: make([]closable, 0),
+		storage:   st,
+	}
 }
 
 func (c *Consumer) handler() pevents.VotesHandler {
@@ -48,12 +50,15 @@ func (c *Consumer) handler() pevents.VotesHandler {
 				Observe(time.Since(start).Seconds())
 		}(time.Now())
 
-		err = c.service.HandleItem(context.TODO(), c.service.ConvertVotesToAnalyticsItem(payload))
-		if err != nil {
-			log.Error().Err(err).Msg("process votes")
+		for _, v := range payload {
+			err = c.storage.Store(v.DaoID.ID(), helpers.Ptr(v))
+
+			if err != nil {
+				return err
+			}
 		}
 
-		log.Debug().Msgf("votes were processed")
+		log.Debug().Int("count", len(payload)).Msg("votes were processed")
 
 		return err
 	}
@@ -62,7 +67,7 @@ func (c *Consumer) handler() pevents.VotesHandler {
 func (c *Consumer) Start(ctx context.Context) error {
 	group := config.GenerateGroupName(groupName)
 
-	consumer, err := client.NewConsumer(ctx, c.conn, group, pevents.SubjectVoteCreated, c.handler())
+	consumer, err := client.NewConsumer(ctx, c.conn, group, pevents.SubjectVoteCreated, c.handler(), client.WithMaxAckPending(10))
 	if err != nil {
 		return fmt.Errorf("consume for %s/%s: %w", group, pevents.SubjectVoteCreated, err)
 	}

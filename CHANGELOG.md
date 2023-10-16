@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [Unreleased]
 
+## [0.1.0] - 2023-10-16
+
 ### Changed
 - Totally reworked clickhouse writing - write data directly instead of using nats engine
 

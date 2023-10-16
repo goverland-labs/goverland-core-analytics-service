@@ -1,18 +1,25 @@
 package internal
 
 import (
+	"database/sql"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
-	"github.com/goverland-labs/analytics-service/internal/dao"
-	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
+	"github.com/goverland-labs/platform-events/events/core"
 	"github.com/nats-io/nats.go"
 	"github.com/s-larionov/process-manager"
 	gormCh "gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/goverland-labs/analytics-service/internal/dao"
+	"github.com/goverland-labs/analytics-service/internal/storage"
+	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
+	"github.com/goverland-labs/analytics-service/pkg/pprofhandler"
 
 	"github.com/goverland-labs/analytics-service/internal/communicate"
 	"github.com/goverland-labs/analytics-service/internal/config"
@@ -30,8 +37,13 @@ type Application struct {
 	cfg     config.App
 	db      *gorm.DB
 
-	repo    *item.Repo
-	service *item.Service
+	natsPublisher    *communicate.Publisher
+	repo             *item.Repo
+	service          *item.Service
+	clickhouseConn   *sql.DB
+	votesStorage     *storage.ClickhouseWorker[*core.VotePayload]
+	proposalsStorage *storage.ClickhouseWorker[proposal.Payload]
+	daosStorage      *storage.ClickhouseWorker[dao.Payload]
 }
 
 func NewApplication(cfg config.App) (*Application, error) {
@@ -59,13 +71,28 @@ func (a *Application) Run() {
 
 func (a *Application) bootstrap() error {
 	initializers := []func() error{
-		a.initDB,
 		// Init Dependencies
+		a.initClickhouse,
+		a.initNats,
 		a.initServices,
+
+		// Init Workers: Clickhouse Storage Workers (should be before consumers!!!)
+		a.initDaosStorageWorker,
+		a.initProposalsStorageWorker,
+		a.initVotesStorageWorker,
+
+		// Init Workers: Consumers
+		a.initDaosConsumerWorker,
+		a.initProposalsConsumerWorker,
+		a.initVotesConsumerWorker,
+
+		// Init Workers: Application
+		a.initGRPCWorker,
 
 		// Init Workers: System
 		a.initPrometheusWorker,
 		a.initHealthWorker,
+		a.initPprofWorker,
 	}
 
 	for _, initializer := range initializers {
@@ -77,8 +104,8 @@ func (a *Application) bootstrap() error {
 	return nil
 }
 
-func (a *Application) initDB() error {
-	conn := clickhouse.OpenDB(&clickhouse.Options{
+func (a *Application) initClickhouse() error {
+	a.clickhouseConn = clickhouse.OpenDB(&clickhouse.Options{
 		Addr: []string{a.cfg.ClickHouse.Host},
 		Auth: clickhouse.Auth{
 			Database: a.cfg.ClickHouse.DB,
@@ -88,13 +115,12 @@ func (a *Application) initDB() error {
 		Debug: a.cfg.ClickHouse.Debug,
 	})
 
-	db, err := gorm.Open(gormCh.New(gormCh.Config{Conn: conn}), &gorm.Config{})
+	db, err := gorm.Open(gormCh.New(gormCh.Config{Conn: a.clickhouseConn}), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 
-	err = migration.ApplyMigrations(db,
-		migration.GetAllMigrations(map[string]string{"nats_url": a.cfg.ClickHouse.NatsUrl}))
+	err = migration.ApplyMigrations(db, migration.GetAllMigrations())
 	if err != nil {
 		return err
 	}
@@ -105,8 +131,8 @@ func (a *Application) initDB() error {
 	return err
 }
 
-func (a *Application) initServices() error {
-	nc, err := nats.Connect(
+func (a *Application) initNats() error {
+	conn, err := nats.Connect(
 		a.cfg.Nats.URL,
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(a.cfg.Nats.MaxReconnects),
@@ -116,74 +142,100 @@ func (a *Application) initServices() error {
 		return err
 	}
 
-	pb, err := communicate.NewPublisher(nc)
+	pb, err := communicate.NewPublisher(conn)
 	if err != nil {
 		return err
 	}
+	a.natsPublisher = pb
 
-	service, err := item.NewService(pb, a.repo)
+	return nil
+}
+
+func (a *Application) createNatsConnection() (*nats.Conn, error) {
+	conn, err := nats.Connect(
+		a.cfg.Nats.URL,
+		nats.RetryOnFailedConnect(true),
+		nats.MaxReconnects(a.cfg.Nats.MaxReconnects),
+		nats.ReconnectWait(a.cfg.Nats.ReconnectTimeout),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func (a *Application) initServices() error {
+	service, err := item.NewService(a.natsPublisher, a.repo)
 	if err != nil {
 		return fmt.Errorf("service: %w", err)
 	}
 	a.service = service
 
-	err = a.initDaoConsumer(nc)
-	if err != nil {
-		return fmt.Errorf("init dao: %w", err)
-	}
+	return nil
+}
 
-	err = a.initProposalConsumer(nc)
-	if err != nil {
-		return fmt.Errorf("init proposal: %w", err)
-	}
-
-	err = a.initVoteConsumer(nc)
-	if err != nil {
-		return fmt.Errorf("init vote: %w", err)
-	}
-
-	err = a.initAPI()
-	if err != nil {
-		return fmt.Errorf("init api: %w", err)
-	}
+func (a *Application) initDaosStorageWorker() error {
+	// TODO: Move parameters to the config
+	a.daosStorage = storage.NewClickhouseWorker[dao.Payload]("daos", a.clickhouseConn, dao.ClickhouseAdapter{}, 1000, 5*time.Minute)
+	a.manager.AddWorker(process.NewCallbackWorker("daos ch storage", a.daosStorage.Start))
 
 	return nil
 }
 
-func (a *Application) initDaoConsumer(nc *nats.Conn) error {
-	cs, err := dao.NewConsumer(nc, a.service)
+func (a *Application) initDaosConsumerWorker() error {
+	conn, err := a.createNatsConnection()
 	if err != nil {
-		return fmt.Errorf("dao consumer: %w", err)
+		return err
 	}
 
-	a.manager.AddWorker(process.NewCallbackWorker("dao-consumer", cs.Start))
+	worker := dao.NewConsumer(conn, a.daosStorage)
+	a.manager.AddWorker(process.NewCallbackWorker("daos consumer", worker.Start))
 
 	return nil
 }
 
-func (a *Application) initProposalConsumer(nc *nats.Conn) error {
-	cs, err := proposal.NewConsumer(nc, a.service)
-	if err != nil {
-		return fmt.Errorf("proposal consumer: %w", err)
-	}
-
-	a.manager.AddWorker(process.NewCallbackWorker("proposal-consumer", cs.Start))
+func (a *Application) initProposalsStorageWorker() error {
+	// TODO: Move parameters to the config
+	a.proposalsStorage = storage.NewClickhouseWorker[proposal.Payload]("proposals", a.clickhouseConn, proposal.ClickhouseAdapter{}, 1000, 5*time.Minute)
+	a.manager.AddWorker(process.NewCallbackWorker("proposals ch storage", a.proposalsStorage.Start))
 
 	return nil
 }
 
-func (a *Application) initVoteConsumer(nc *nats.Conn) error {
-	cs, err := vote.NewConsumer(nc, a.service)
+func (a *Application) initProposalsConsumerWorker() error {
+	conn, err := a.createNatsConnection()
 	if err != nil {
-		return fmt.Errorf("vote consumer: %w", err)
+		return err
 	}
 
-	a.manager.AddWorker(process.NewCallbackWorker("vote-consumer", cs.Start))
+	worker := proposal.NewConsumer(conn, a.proposalsStorage)
+	a.manager.AddWorker(process.NewCallbackWorker("proposals consumer", worker.Start))
 
 	return nil
 }
 
-func (a *Application) initAPI() error {
+func (a *Application) initVotesStorageWorker() error {
+	// TODO: Move parameters to the config
+	a.votesStorage = storage.NewClickhouseWorker[*core.VotePayload]("votes", a.clickhouseConn, vote.ClickhouseAdapter{}, 50000, 5*time.Minute)
+	a.manager.AddWorker(process.NewCallbackWorker("votes ch storage", a.votesStorage.Start))
+
+	return nil
+}
+
+func (a *Application) initVotesConsumerWorker() error {
+	conn, err := a.createNatsConnection()
+	if err != nil {
+		return err
+	}
+
+	worker := vote.NewConsumer(conn, a.votesStorage)
+	a.manager.AddWorker(process.NewCallbackWorker("votes consumer", worker.Start))
+
+	return nil
+}
+
+func (a *Application) initGRPCWorker() error {
 	srv := grpcsrv.NewGrpcServer()
 	internalapi.RegisterAnalyticsServer(srv, item.NewServer(a.service))
 
@@ -202,6 +254,17 @@ func (a *Application) initPrometheusWorker() error {
 func (a *Application) initHealthWorker() error {
 	srv := health.NewHealthCheckServer(a.cfg.Health.Listen, "/status", health.DefaultHandler(a.manager))
 	a.manager.AddWorker(process.NewServerWorker("health", srv))
+
+	return nil
+}
+
+func (a *Application) initPprofWorker() error {
+	if !a.cfg.Pprof.Enabled {
+		return nil
+	}
+
+	srv := pprofhandler.NewPprofServer(a.cfg.Pprof.Listen)
+	a.manager.AddWorker(process.NewServerWorker("pprof", srv))
 
 	return nil
 }

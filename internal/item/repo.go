@@ -15,34 +15,60 @@ func NewRepo(db *gorm.DB) *Repo {
 
 func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error) {
 	var res []*MonthlyActiveUser
-	err := r.db.Raw(`select toStartOfMonth(v.created_at) as PeriodStarted,
-       				count(distinct v.voter) as ActiveUsers, countIf(distinct v.voter, v.created_at = firstVote) as NewActiveUsers from votes_view v 
-       		    	inner join
-					(select min(created_at) as firstVote, voter from votes_view
-					where dao_id = ? group by voter) votes
-					on v.voter = votes.voter where v.dao_id = ? 
-					group by PeriodStarted
-					order by PeriodStarted
-					with fill step interval 1 month`, id, id).Scan(&res).Error
+	err := r.db.Raw(`
+		SELECT toStartOfMonth(v.created_at) AS PeriodStarted,
+		       count(distinct v.voter) AS ActiveUsers,
+		       countIf(distinct v.voter, v.created_at = firstVote) AS NewActiveUsers
+		FROM votes_raw v 
+		INNER JOIN (
+		    SELECT min(created_at) AS firstVote,
+		           voter
+		    FROM votes_raw
+		    WHERE dao_id = ?π
+		    GROUP BY voter
+		) votes ON v.voter = votes.voter
+		WHERE v.dao_id = ? 
+		GROUP BY PeriodStarted
+		ORDER BY PeriodStarted
+		WITH FILL STEP INTERVAL 1 MONTH`, id, id).
+		Scan(&res).
+		Error
 
 	return res, err
 }
 
 func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 	var res []*Bucket
-	err := r.db.Raw(`select GroupId, count() as Voters from
-							(select count() as bucket from votes_view
-							where dao_id = ? group by voter) as votes_count
-							group by multiIf(bucket = 1, 1, bucket = 2, 2, bucket < 5, 3, bucket < 8, 4, bucket < 13, 5, bucket >= 13, 6, 7) as GroupId
-							order by GroupId with fill to 7`, id).Scan(&res).Error
+	err := r.db.Raw(`
+		SELECT GroupId,
+		       count() AS Voters
+		FROM (
+		    SELECT count() AS bucket
+		    FROM votes_raw
+		    WHERE dao_id = ?
+		    GROUP BY voter
+		) AS votes_count
+		GROUP BY multiIf(bucket = 1, 1, bucket = 2, 2, bucket < 5, 3, bucket < 8, 4, bucket < 13, 5, bucket >= 13, 6, 7) AS GroupId
+		ORDER BY GroupId
+		WITH FILL TO 7`, id).
+		Scan(&res).
+		Error
 
 	return res, err
 }
 
 func (r *Repo) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
 	var res *ExclusiveVoters
-	err := r.db.Raw(`select countIf(daoCount = 1), toInt8(countIf(daoCount = 1)/count()*100) from (select voter, uniqExact(dao_id) daoCount from votes_view 
-                         where voter in (select distinct(voter) from votes_view where dao_id = ? group by voter) as daos;`, id).Scan(&res).Error
+	err := r.db.Raw(`
+		SELECT countIf(daoCount = 1),
+		       toInt8(countIf(daoCount = 1)/count()*100)
+		FROM (
+		    SELECT voter,
+		           uniqExact(dao_id) daoCount
+		    FROM votes_raw
+			WHERE voter IN (SELECT distinct(voter) FROM votes_raw WHERE dao_id = ? GROUP BY voter) AS daos GROUP BY voter)`, id).
+		Scan(&res).
+		Error
 
 	return res, err
 }

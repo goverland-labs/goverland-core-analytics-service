@@ -13,40 +13,48 @@ import (
 	"github.com/goverland-labs/analytics-service/internal/config"
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/metrics"
+	"github.com/goverland-labs/analytics-service/pkg/helpers"
 )
 
-const (
-	groupName = "dao"
-)
+const groupName = "dao"
+
+var subjects = []string{
+	pevents.SubjectDaoCreated,
+	pevents.SubjectDaoUpdated,
+}
 
 type closable interface {
 	Close() error
 }
 
-type Consumer struct {
-	conn      *nats.Conn
-	service   *item.Service
-	consumers []closable
+type storage interface {
+	Store(group uint32, items ...Payload) error
 }
 
-func NewConsumer(nc *nats.Conn, s *item.Service) (*Consumer, error) {
-	c := &Consumer{
-		conn:      nc,
-		service:   s,
-		consumers: make([]closable, 0),
-	}
+type Consumer struct {
+	conn      *nats.Conn
+	consumers []closable
+	storage   storage
+}
 
-	return c, nil
+func NewConsumer(nc *nats.Conn, s storage) *Consumer {
+	return &Consumer{
+		conn:      nc,
+		consumers: make([]closable, 0),
+		storage:   s,
+	}
 }
 
 func (c *Consumer) handler(action string) pevents.DaoHandler {
 	return func(payload pevents.DaoPayload) error {
 		var err error
+
 		defer func(start time.Time) {
 			metricHandleHistogram.
 				WithLabelValues("handle_dao", metrics.ErrLabelValue(err)).
 				Observe(time.Since(start).Seconds())
 		}(time.Now())
+
 		eventType := item.None
 		switch action {
 		case pevents.SubjectDaoCreated:
@@ -55,12 +63,12 @@ func (c *Consumer) handler(action string) pevents.DaoHandler {
 			eventType = item.DaoUpdated
 		}
 
-		err = c.service.HandleItem(context.TODO(), c.service.ConvertDaoToAnalyticsItem(payload, eventType))
-		if err != nil {
-			log.Error().Err(err).Msg("process dao")
-		}
+		err = c.storage.Store(payload.ID.ID(), Payload{
+			Action: string(eventType),
+			DAO:    helpers.Ptr(payload),
+		})
 
-		log.Debug().Msgf("dao was processed: %s", payload.ID)
+		log.Debug().Str("dao_id", payload.ID.String()).Msg("dao was processed")
 
 		return err
 	}
@@ -68,8 +76,8 @@ func (c *Consumer) handler(action string) pevents.DaoHandler {
 
 func (c *Consumer) Start(ctx context.Context) error {
 	group := config.GenerateGroupName(groupName)
-	for _, subj := range []string{pevents.SubjectDaoCreated, pevents.SubjectDaoUpdated} {
-		consumer, err := client.NewConsumer(ctx, c.conn, group, subj, c.handler(subj))
+	for _, subj := range subjects {
+		consumer, err := client.NewConsumer(ctx, c.conn, group, subj, c.handler(subj), client.WithMaxAckPending(10))
 		if err != nil {
 			return fmt.Errorf("consume for %s/%s: %w", group, subj, err)
 		}

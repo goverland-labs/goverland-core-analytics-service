@@ -11,49 +11,61 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/goverland-labs/analytics-service/internal/config"
-	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/metrics"
+	"github.com/goverland-labs/analytics-service/pkg/helpers"
 )
 
-const (
-	groupName = "proposal"
-)
+const groupName = "proposal"
+
+var subjects = []string{
+	pevents.SubjectProposalCreated,
+	pevents.SubjectProposalUpdated,
+	pevents.SubjectProposalUpdatedState,
+	pevents.SubjectProposalVotingStarted,
+	pevents.SubjectProposalVotingEnded,
+	pevents.SubjectProposalVotingQuorumReached,
+	pevents.SubjectProposalVotingStartsSoon,
+	pevents.SubjectProposalVotingEndsSoon,
+}
 
 type closable interface {
 	Close() error
 }
 
-type Consumer struct {
-	conn      *nats.Conn
-	service   *item.Service
-	consumers []closable
+type storage interface {
+	Store(group uint32, items ...Payload) error
 }
 
-func NewConsumer(nc *nats.Conn, s *item.Service) (*Consumer, error) {
-	c := &Consumer{
-		conn:      nc,
-		service:   s,
-		consumers: make([]closable, 0),
-	}
+type Consumer struct {
+	conn      *nats.Conn
+	consumers []closable
+	storage   storage
+}
 
-	return c, nil
+func NewConsumer(nc *nats.Conn, st storage) *Consumer {
+	return &Consumer{
+		conn:      nc,
+		consumers: make([]closable, 0),
+		storage:   st,
+	}
 }
 
 func (c *Consumer) handler(action string) pevents.ProposalHandler {
 	return func(payload pevents.ProposalPayload) error {
 		var err error
+
 		defer func(start time.Time) {
 			metricHandleHistogram.
 				WithLabelValues("handle_proposal", metrics.ErrLabelValue(err)).
 				Observe(time.Since(start).Seconds())
 		}(time.Now())
 
-		err = c.service.HandleItem(context.TODO(), c.service.ConvertProposalToAnalyticsItem(payload, action))
-		if err != nil {
-			log.Error().Err(err).Msg("process proposal")
-		}
+		err = c.storage.Store(payload.DaoID.ID(), Payload{
+			Action:   action,
+			Proposal: helpers.Ptr(payload),
+		})
 
-		log.Debug().Msgf("proposal was processed: %s", payload.ID)
+		log.Debug().Str("proposal_id", payload.ID).Msg("proposal was processed")
 
 		return err
 	}
@@ -61,10 +73,8 @@ func (c *Consumer) handler(action string) pevents.ProposalHandler {
 
 func (c *Consumer) Start(ctx context.Context) error {
 	group := config.GenerateGroupName(groupName)
-	for _, subj := range []string{pevents.SubjectProposalCreated, pevents.SubjectProposalUpdated,
-		pevents.SubjectProposalUpdatedState, pevents.SubjectProposalVotingStarted, pevents.SubjectProposalVotingEnded, pevents.SubjectProposalVotingQuorumReached,
-		pevents.SubjectProposalVotingStartsSoon, pevents.SubjectProposalVotingEndsSoon} {
-		consumer, err := client.NewConsumer(ctx, c.conn, group, subj, c.handler(subj))
+	for _, subj := range subjects {
+		consumer, err := client.NewConsumer(ctx, c.conn, group, subj, c.handler(subj), client.WithMaxAckPending(2))
 		if err != nil {
 			return fmt.Errorf("consume for %s/%s: %w", group, subj, err)
 		}

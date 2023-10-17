@@ -7,29 +7,10 @@ import (
 )
 
 const (
-	None                        EventType = ""
-	DaoCreated                  EventType = "dao_created"
-	DaoUpdated                  EventType = "dao_updated"
-	ProposalCreated             EventType = "proposal_created"
-	ProposalUpdated             EventType = "proposal_updated"
-	ProposalVotingStarted       EventType = "proposal_voting_started"
-	ProposalVotingEnded         EventType = "proposal_voting_ended"
-	ProposalVotingQuorumReached EventType = "proposal_voting_quorum_reached"
-	ProposalVotingStartsSoon    EventType = "proposal_voting_starts_soon"
-	ProposalVotingEndsSoon      EventType = "proposal_voting_ends_soon"
-	VoteCreated                 EventType = "vote_created"
+	None       EventType = ""
+	DaoCreated EventType = "dao_created"
+	DaoUpdated EventType = "dao_updated"
 )
-
-var EventTypeByAction = map[string]EventType{
-	events.SubjectProposalCreated:             ProposalCreated,
-	events.SubjectProposalUpdated:             ProposalUpdated,
-	events.SubjectProposalUpdatedState:        ProposalUpdated,
-	events.SubjectProposalVotingStarted:       ProposalVotingStarted,
-	events.SubjectProposalVotingEnded:         ProposalVotingEnded,
-	events.SubjectProposalVotingQuorumReached: ProposalVotingQuorumReached,
-	events.SubjectProposalVotingStartsSoon:    ProposalVotingStartsSoon,
-	events.SubjectProposalVotingEndsSoon:      ProposalVotingEndsSoon,
-}
 
 var BucketMinVotes = map[uint8]string{
 	1: "1",

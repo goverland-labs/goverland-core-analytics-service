@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [Unreleased]
 
+## [0.1.2] - 2023-10-17
+
+### Added
+- Exclusive voters, monthly proposals
+
 ## [0.1.1] - 2023-10-16
 
 ### Fixed

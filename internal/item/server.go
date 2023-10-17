@@ -55,6 +55,39 @@ func (s *Server) GetVoterBuckets(_ context.Context, req *internalapi.VoterBucket
 	}, nil
 }
 
+func (s *Server) GetExclusiveVoters(_ context.Context, req *internalapi.ExclusiveVotersRequest) (*internalapi.ExclusiveVotersResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	ev, err := s.service.GetExclusiveVoters(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no votes for this dao ID")
+	}
+
+	return &internalapi.ExclusiveVotersResponse{
+		Count:   ev.Count,
+		Percent: ev.Percent,
+	}, nil
+}
+
+func (s *Server) GetMonthlyNewProposals(_ context.Context, req *internalapi.MonthlyNewProposalsRequest) (*internalapi.MonthlyNewProposalsResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	proposals, err := s.service.GetMonthlyNewProposals(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no proposals for this dao ID")
+	}
+
+	return &internalapi.MonthlyNewProposalsResponse{
+		ProposalsByMonth: convertMonthlyNewProposalsToAPI(proposals),
+	}, nil
+}
+
 func getDaoUuid(daoId string) (uuid.UUID, error) {
 	if daoId == "" {
 		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")
@@ -86,6 +119,18 @@ func convertBucketsToAPI(buckets []*Bucket) []*internalapi.VoterGroup {
 		res[i] = &internalapi.VoterGroup{
 			Votes:  BucketMinVotes[bucket.GroupId],
 			Voters: bucket.Voters,
+		}
+	}
+
+	return res
+}
+
+func convertMonthlyNewProposalsToAPI(proposals []*ProposalsByMonth) []*internalapi.ProposalsByMonth {
+	res := make([]*internalapi.ProposalsByMonth, len(proposals))
+	for i, mp := range proposals {
+		res[i] = &internalapi.ProposalsByMonth{
+			PeriodStarted:  timestamppb.New(mp.PeriodStarted),
+			ProposalsCount: mp.ProposalsCount,
 		}
 	}
 

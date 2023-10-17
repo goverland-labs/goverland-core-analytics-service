@@ -79,14 +79,19 @@ type MonthlyActiveUser struct {
 	NewActiveUsers uint64
 }
 
+type ProposalsByMonth struct {
+	PeriodStarted  time.Time
+	ProposalsCount uint64
+}
+
 type Bucket struct {
 	GroupId uint8
 	Voters  uint64
 }
 
 type ExclusiveVoters struct {
-	Count   uint8
-	Percent uint8
+	Count   uint32
+	Percent uint32
 }
 
 type EventType string

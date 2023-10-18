@@ -62,8 +62,8 @@ func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error) {
 	var res *ExclusiveVoters
 	err := r.db.Raw(`
-		SELECT countIf(daoCount = 1),
-		       toInt8(countIf(daoCount = 1)/count()*100)
+		SELECT countIf(daoCount = 1) as Count,
+		       toInt8(countIf(daoCount = 1)/count()*100) as Percent
 		FROM (
 		    SELECT voter,
 		           uniqExact(dao_id) daoCount

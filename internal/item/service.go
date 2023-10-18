@@ -13,7 +13,8 @@ type Publisher interface {
 type DataProvider interface {
 	GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error)
 	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
-	GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error)
+	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
+	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
 }
 
 type Service struct {
@@ -37,5 +38,9 @@ func (s *Service) GetVoterBuckets(id uuid.UUID) ([]*Bucket, error) {
 }
 
 func (s *Service) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
-	return s.repo.GetExclusiveVoters(id)
+	return s.repo.GetExclusiveVotersByDaoId(id)
+}
+
+func (s *Service) GetMonthlyNewProposals(id uuid.UUID) ([]*ProposalsByMonth, error) {
+	return s.repo.GetMonthlyNewProposalsByDaoId(id)
 }

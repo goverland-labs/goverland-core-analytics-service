@@ -3,6 +3,8 @@ package item
 import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/goverland-labs/platform-events/events/core"
 )
 
 type Repo struct {
@@ -57,7 +59,7 @@ func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 	return res, err
 }
 
-func (r *Repo) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
+func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error) {
 	var res *ExclusiveVoters
 	err := r.db.Raw(`
 		SELECT countIf(daoCount = 1),
@@ -67,6 +69,22 @@ func (r *Repo) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
 		           uniqExact(dao_id) daoCount
 		    FROM votes_raw
 			WHERE voter IN (SELECT distinct(voter) FROM votes_raw WHERE dao_id = ? GROUP BY voter) AS daos GROUP BY voter)`, id).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
+func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error) {
+	var res []*ProposalsByMonth
+	err := r.db.Raw(`
+		SELECT toStartOfMonth(created_at) AS PeriodStarted,
+		       count(distinct proposal_id) AS ProposalsCount
+		FROM proposals_raw 
+		WHERE dao_id = ? and event_type = ? 
+		GROUP BY PeriodStarted
+		ORDER BY PeriodStarted
+		WITH FILL STEP INTERVAL 1 MONTH`, id, core.SubjectProposalCreated).
 		Scan(&res).
 		Error
 

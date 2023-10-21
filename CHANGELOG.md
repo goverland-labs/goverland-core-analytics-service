@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Percent succeeded proposals
+
+### Fixed
+- Exclusive voters for dao without votes
+
 ## [0.1.2] - 2023-10-18
 
 ### Added

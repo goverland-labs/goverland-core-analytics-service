@@ -88,6 +88,22 @@ func (s *Server) GetMonthlyNewProposals(_ context.Context, req *internalapi.Mont
 	}, nil
 }
 
+func (s *Server) GetPercentSucceededProposals(_ context.Context, req *internalapi.PercentSucceededProposalsRequest) (*internalapi.PercentSucceededProposalsResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	psp, err := s.service.GetPercentSucceededProposals(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no finished proposals for this dao ID")
+	}
+
+	return &internalapi.PercentSucceededProposalsResponse{
+		Percent: psp,
+	}, nil
+}
+
 func getDaoUuid(daoId string) (uuid.UUID, error) {
 	if daoId == "" {
 		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")

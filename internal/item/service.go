@@ -15,6 +15,7 @@ type DataProvider interface {
 	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
+	GetPercentSucceededProposalsByDaoId(id uuid.UUID) (uint32, error)
 }
 
 type Service struct {
@@ -43,4 +44,8 @@ func (s *Service) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
 
 func (s *Service) GetMonthlyNewProposals(id uuid.UUID) ([]*ProposalsByMonth, error) {
 	return s.repo.GetMonthlyNewProposalsByDaoId(id)
+}
+
+func (s *Service) GetPercentSucceededProposals(id uuid.UUID) (uint32, error) {
+	return s.repo.GetPercentSucceededProposalsByDaoId(id)
 }

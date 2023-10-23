@@ -70,6 +70,11 @@ type Bucket struct {
 	Voters  uint64
 }
 
+type FinalProposalCounts struct {
+	Succeeded uint32
+	Finished  uint32
+}
+
 type ExclusiveVoters struct {
 	Count   uint32
 	Percent uint32

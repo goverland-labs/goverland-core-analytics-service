@@ -63,7 +63,7 @@ func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	var res *ExclusiveVoters
 	err := r.db.Raw(`
 		SELECT countIf(daoCount = 1) as Count,
-		       toInt8(countIf(daoCount = 1)/count()*100) as Percent
+		       multiIf(count() = 0, 0, toInt8(countIf(daoCount = 1)/count()*100)) as Percent
 		FROM (
 		    SELECT voter,
 		           uniqExact(dao_id) daoCount
@@ -89,4 +89,20 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth,
 		Error
 
 	return res, err
+}
+
+func (r *Repo) GetPercentSucceededProposalsByDaoId(id uuid.UUID) (uint32, error) {
+	var res *FinalProposalCounts
+	err := r.db.Raw(`select countIf(state='succeeded') as Succeeded, countIf(state in ('succeeded', 'failed', 'defeated')) as Finished 
+    							from(
+									select proposal_id, argMax(state, created_at) as state from proposals_raw
+                             			where dao_id = ?
+                                                group by proposal_id)`, id).
+		Scan(&res).
+		Error
+	if res.Finished == 0 {
+		return 0, err
+	} else {
+		return uint32(float32(res.Succeeded) / float32(res.Finished) * 100), err
+	}
 }

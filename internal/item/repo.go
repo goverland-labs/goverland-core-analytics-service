@@ -16,25 +16,46 @@ func NewRepo(db *gorm.DB) *Repo {
 }
 
 func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error) {
-	var res []*MonthlyActiveUser
-	err := r.db.Raw(`
-		SELECT toStartOfMonth(v.created_at) AS PeriodStarted,
-		       count(distinct v.voter) AS ActiveUsers,
-		       countIf(distinct v.voter, v.created_at = firstVote) AS NewActiveUsers
-		FROM votes_raw v 
-		INNER JOIN (
-		    SELECT min(created_at) AS firstVote,
-		           voter
-		    FROM votes_raw
-		    WHERE dao_id = ?
-		    GROUP BY voter
-		) votes ON v.voter = votes.voter
-		WHERE v.dao_id = ? 
-		GROUP BY PeriodStarted
-		ORDER BY PeriodStarted
-		WITH FILL STEP INTERVAL 1 MONTH`, id, id).
-		Scan(&res).
+	var au, nau []*MonthlyUser
+
+	var err = r.db.Raw(`SELECT month_start AS PeriodStarted,
+       							   uniqExactMerge(voters_count) AS ActiveUsers
+							 FROM dao_voters_count
+								WHERE dao_id = ?
+								GROUP BY dao_id, PeriodStarted
+								ORDER BY PeriodStarted
+								WITH FILL STEP INTERVAL 1 MONTH`, id).
+		Scan(&au).
 		Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.Raw(`SELECT PeriodStarted,
+							   uniqExact(voter) AS ActiveUsers
+						FROM (SELECT toStartOfMonth(minMerge(start_date)) as PeriodStarted, voter from dao_voters_start_mv WHERE dao_id = ? group by dao_id, voter) dv
+						GROUP BY PeriodStarted
+						ORDER BY PeriodStarted
+						WITH FILL STEP INTERVAL 1 MONTH`, id).
+		Scan(&nau).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*MonthlyActiveUser, len(au))
+	nauLen := len(nau)
+	for i, muser := range au {
+		var nuCount uint64 = 0
+		if i < nauLen {
+			nuCount = nau[i].ActiveUsers
+		}
+		res[i] = &MonthlyActiveUser{
+			PeriodStarted:  muser.PeriodStarted,
+			ActiveUsers:    muser.ActiveUsers,
+			NewActiveUsers: nuCount,
+		}
+	}
 
 	return res, err
 }

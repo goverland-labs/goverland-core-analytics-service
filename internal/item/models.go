@@ -85,6 +85,23 @@ type ExclusiveVoters struct {
 	Percent uint32
 }
 
+type Dao struct {
+	DaoID       uuid.UUID
+	VotersCount uint32
+}
+
+type MutualDao struct {
+	DaoID         uuid.UUID
+	VotersCount   uint32
+	VotersPercent float32
+}
+
+type VoterWithVp struct {
+	Voter      string
+	VpAvg      float32
+	VotesCount uint32
+}
+
 type EventType string
 
 type Strategy struct {

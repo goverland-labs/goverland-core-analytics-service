@@ -60,6 +60,11 @@ type MonthlyActiveUser struct {
 	NewActiveUsers uint64
 }
 
+type MonthlyUser struct {
+	PeriodStarted time.Time
+	ActiveUsers   uint64
+}
+
 type ProposalsByMonth struct {
 	PeriodStarted  time.Time
 	ProposalsCount uint64

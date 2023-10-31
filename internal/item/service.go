@@ -2,6 +2,10 @@ package item
 
 import (
 	"context"
+	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 )
@@ -15,7 +19,9 @@ type DataProvider interface {
 	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
-	GetPercentSucceededProposalsByDaoId(id uuid.UUID) (uint32, error)
+	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
+	GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error)
+	GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error)
 }
 
 type Service struct {
@@ -46,6 +52,30 @@ func (s *Service) GetMonthlyNewProposals(id uuid.UUID) ([]*ProposalsByMonth, err
 	return s.repo.GetMonthlyNewProposalsByDaoId(id)
 }
 
-func (s *Service) GetPercentSucceededProposals(id uuid.UUID) (uint32, error) {
-	return s.repo.GetPercentSucceededProposalsByDaoId(id)
+func (s *Service) GetSucceededProposalsCount(id uuid.UUID) (*FinalProposalCounts, error) {
+	return s.repo.GetProposalsCountByDaoId(id)
+}
+
+func (s *Service) GetMutualDaos(id uuid.UUID, limit uint64) ([]*MutualDao, error) {
+	daos, err := s.repo.GetMutualDaos(id, limit+1)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no daos")
+	}
+	dcount := daos[0].VotersCount
+	if dcount == 0 {
+		return nil, status.Error(codes.InvalidArgument, "no voters")
+	}
+	res := make([]*MutualDao, len(daos)-1)
+	for i, dao := range daos[1:] {
+		res[i] = &MutualDao{
+			DaoID:         dao.DaoID,
+			VotersCount:   dao.VotersCount,
+			VotersPercent: float32(dao.VotersCount) / float32(dcount) * 100.0,
+		}
+	}
+	return res, nil
+}
+
+func (s *Service) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error) {
+	return s.repo.GetTopVotersByVp(id, limit)
 }

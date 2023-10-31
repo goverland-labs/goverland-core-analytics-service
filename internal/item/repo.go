@@ -112,7 +112,7 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth,
 	return res, err
 }
 
-func (r *Repo) GetPercentSucceededProposalsByDaoId(id uuid.UUID) (uint32, error) {
+func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error) {
 	var res *FinalProposalCounts
 	err := r.db.Raw(`select countIf(state='succeeded') as Succeeded, countIf(state in ('succeeded', 'failed', 'defeated')) as Finished 
     							from(
@@ -121,9 +121,35 @@ func (r *Repo) GetPercentSucceededProposalsByDaoId(id uuid.UUID) (uint32, error)
                                                 group by proposal_id)`, id).
 		Scan(&res).
 		Error
-	if res.Finished == 0 {
-		return 0, err
-	} else {
-		return uint32(float32(res.Succeeded) / float32(res.Finished) * 100), err
-	}
+	return res, err
+}
+
+func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error) {
+	var res []*Dao
+	err := r.db.Raw(`
+		select dao_id as DaoID, uniqExact(voter) as VotersCount from votes_raw 
+		    where voter in (select voter from votes_raw where dao_id = ?)
+				group by dao_id 
+				order by multiIf(dao_id = ?, 1,2), VotersCount desc 
+				Limit ?`, id, id, limit).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
+func (r *Repo) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error) {
+	var res []*VoterWithVp
+	err := r.db.Raw(`
+		select voter as Voter, avg(vp) as VpAvg, count() as VotesCount 
+			from votes_raw 
+				where dao_id = ? and 
+				      voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
+		        group by voter 
+		        order by VotesCount desc 
+		        limit ?`, id, id, limit).
+		Scan(&res).
+		Error
+
+	return res, err
 }

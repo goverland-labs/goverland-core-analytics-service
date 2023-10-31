@@ -88,19 +88,52 @@ func (s *Server) GetMonthlyNewProposals(_ context.Context, req *internalapi.Mont
 	}, nil
 }
 
-func (s *Server) GetPercentSucceededProposals(_ context.Context, req *internalapi.PercentSucceededProposalsRequest) (*internalapi.PercentSucceededProposalsResponse, error) {
+func (s *Server) GetSucceededProposalsCount(_ context.Context, req *internalapi.SucceededProposalsCountRequest) (*internalapi.SucceededProposalsCountResponse, error) {
 	id, err := getDaoUuid(req.GetDaoId())
 	if err != nil {
 		return nil, err
 	}
 
-	psp, err := s.service.GetPercentSucceededProposals(id)
+	spc, err := s.service.GetSucceededProposalsCount(id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no finished proposals for this dao ID")
 	}
 
-	return &internalapi.PercentSucceededProposalsResponse{
-		Percent: psp,
+	return &internalapi.SucceededProposalsCountResponse{
+		Succeeded: spc.Succeeded,
+		Finished:  spc.Finished,
+	}, nil
+}
+
+func (s *Server) GetTopVotersByVp(_ context.Context, req *internalapi.TopVotersByVpRequest) (*internalapi.TopVotersByVpResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	voters, err := s.service.GetTopVotersByVp(id, req.Limit)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no users for this dao ID")
+	}
+
+	return &internalapi.TopVotersByVpResponse{
+		VoterWithVp: convertVotersWithVpToAPI(voters),
+	}, nil
+}
+
+func (s *Server) GetDaosVotersParticipateIn(_ context.Context, req *internalapi.DaosVotersParticipateInRequest) (*internalapi.DaosVotersParticipateInResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	daos, err := s.service.GetMutualDaos(id, req.GetLimit())
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no daos")
+	}
+
+	return &internalapi.DaosVotersParticipateInResponse{
+		DaoVotersParticipateIn: convertMutualDaoToAPI(daos),
 	}, nil
 }
 
@@ -147,6 +180,32 @@ func convertMonthlyNewProposalsToAPI(proposals []*ProposalsByMonth) []*internala
 		res[i] = &internalapi.ProposalsByMonth{
 			PeriodStarted:  timestamppb.New(mp.PeriodStarted),
 			ProposalsCount: mp.ProposalsCount,
+		}
+	}
+
+	return res
+}
+
+func convertVotersWithVpToAPI(voters []*VoterWithVp) []*internalapi.VoterWithVp {
+	res := make([]*internalapi.VoterWithVp, len(voters))
+	for i, voter := range voters {
+		res[i] = &internalapi.VoterWithVp{
+			Voter:      voter.Voter,
+			VpAvg:      voter.VpAvg,
+			VotesCount: voter.VotesCount,
+		}
+	}
+
+	return res
+}
+
+func convertMutualDaoToAPI(daos []*MutualDao) []*internalapi.DaoVotersParticipateIn {
+	res := make([]*internalapi.DaoVotersParticipateIn, len(daos))
+	for i, dao := range daos {
+		res[i] = &internalapi.DaoVotersParticipateIn{
+			DaoId:         dao.DaoID.String(),
+			VotersCount:   dao.VotersCount,
+			PercentVoters: dao.VotersPercent,
 		}
 	}
 

@@ -67,8 +67,8 @@ func (s *Server) GetExclusiveVoters(_ context.Context, req *internalapi.Exclusiv
 	}
 
 	return &internalapi.ExclusiveVotersResponse{
-		Count:   ev.Count,
-		Percent: ev.Percent,
+		Exclusive: ev.Exclusive,
+		Total:     ev.Total,
 	}, nil
 }
 

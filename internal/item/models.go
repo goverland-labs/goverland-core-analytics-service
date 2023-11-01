@@ -81,8 +81,8 @@ type FinalProposalCounts struct {
 }
 
 type ExclusiveVoters struct {
-	Count   uint32
-	Percent uint32
+	Exclusive uint32
+	Total     uint32
 }
 
 type Dao struct {

@@ -83,13 +83,13 @@ func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error) {
 	var res *ExclusiveVoters
 	err := r.db.Raw(`
-		SELECT countIf(daoCount = 1) as Count,
-		       multiIf(count() = 0, 0, toInt8(countIf(daoCount = 1)/count()*100)) as Percent
+		SELECT countIf(daoCount = 1) as Exclusive,
+		       count() as Total
 		FROM (
 			 SELECT voter,
 					uniqExact(dao_id) daoCount
 			 FROM dao_voters_start_mv
-			WHERE voter IN (SELECT distinct(voter) FROM dao_voters_start_mv WHERE dao_id = ?) AS daos GROUP BY voter)`, id).
+			 WHERE voter IN (SELECT distinct(voter) FROM dao_voters_start_mv WHERE dao_id = ?) AS daos GROUP BY voter)`, id).
 		Scan(&res).
 		Error
 

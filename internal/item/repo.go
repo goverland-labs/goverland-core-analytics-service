@@ -86,10 +86,10 @@ func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 		SELECT countIf(daoCount = 1) as Count,
 		       multiIf(count() = 0, 0, toInt8(countIf(daoCount = 1)/count()*100)) as Percent
 		FROM (
-		    SELECT voter,
-		           uniqExact(dao_id) daoCount
-		    FROM votes_raw
-			WHERE voter IN (SELECT distinct(voter) FROM votes_raw WHERE dao_id = ? GROUP BY voter) AS daos GROUP BY voter)`, id).
+			 SELECT voter,
+					uniqExact(dao_id) daoCount
+			 FROM dao_voters_start_mv
+			WHERE voter IN (SELECT distinct(voter) FROM dao_voters_start_mv WHERE dao_id = ?) AS daos GROUP BY voter)`, id).
 		Scan(&res).
 		Error
 
@@ -127,8 +127,8 @@ func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, err
 func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error) {
 	var res []*Dao
 	err := r.db.Raw(`
-		select dao_id as DaoID, uniqExact(voter) as VotersCount from votes_raw 
-		    where voter in (select voter from votes_raw where dao_id = ?)
+		select dao_id as DaoID, uniqExact(voter) as VotersCount from dao_voters_start_mv 
+		    where voter in (select voter from dao_voters_start_mv where dao_id = ?)
 				group by dao_id 
 				order by multiIf(dao_id = ?, 1,2), VotersCount desc 
 				Limit ?`, id, id, limit).

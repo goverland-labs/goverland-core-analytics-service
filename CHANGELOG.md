@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.7] - 2023-11-02
+
+### Fixed
+- Order vp
+- Mutual daos without voters
+
 ## [0.1.6] - 2023-11-02
 
 ### Changed

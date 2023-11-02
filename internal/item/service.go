@@ -61,10 +61,10 @@ func (s *Service) GetMutualDaos(id uuid.UUID, limit uint64) ([]*MutualDao, error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no daos")
 	}
-	dcount := daos[0].VotersCount
-	if dcount == 0 {
-		return nil, status.Error(codes.InvalidArgument, "no voters")
+	if len(daos) == 0 {
+		return nil, err
 	}
+	dcount := daos[0].VotersCount
 	res := make([]*MutualDao, len(daos)-1)
 	for i, dao := range daos[1:] {
 		res[i] = &MutualDao{

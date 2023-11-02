@@ -146,7 +146,7 @@ func (r *Repo) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, err
 				where dao_id = ? and 
 				      voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
 		        group by voter 
-		        order by VotesCount desc 
+		        order by (VpAvg, VotesCount) desc 
 		        limit ?`, id, id, limit).
 		Scan(&res).
 		Error

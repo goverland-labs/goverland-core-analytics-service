@@ -66,7 +66,7 @@ func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 		SELECT GroupId,
 		       count() AS Voters
 		FROM (
-		    SELECT count() AS bucket
+		    SELECT uniq(proposal_id) AS bucket
 		    FROM votes_raw
 		    WHERE dao_id = ?
 		    GROUP BY voter

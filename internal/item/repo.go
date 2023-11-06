@@ -87,7 +87,7 @@ func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 		       count() as Total
 		FROM (
 			 SELECT voter,
-					uniqExact(dao_id) daoCount
+					uniq(dao_id) daoCount
 			 FROM dao_voters_start_mv
 			 WHERE voter IN (SELECT distinct(voter) FROM dao_voters_start_mv WHERE dao_id = ?) AS daos GROUP BY voter)`, id).
 		Scan(&res).

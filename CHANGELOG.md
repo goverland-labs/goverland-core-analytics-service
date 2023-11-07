@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.10] - 2023-11-07
+
+### Fixed
+- Mutual daos calculation
+
 ## [0.1.9] - 2023-11-07
 
 ### Fixed

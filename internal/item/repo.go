@@ -127,7 +127,7 @@ func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, err
 func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error) {
 	var res []*Dao
 	err := r.db.Raw(`
-		select dao_id as DaoID, uniqExact(voter) as VotersCount from dao_voters_start_mv 
+		select dao_id as DaoID, uniq(voter) as VotersCount from dao_voters_start_mv 
 		    where voter in (select voter from dao_voters_start_mv where dao_id = ?)
 				group by dao_id 
 				order by multiIf(dao_id = ?, 1,2), VotersCount desc 

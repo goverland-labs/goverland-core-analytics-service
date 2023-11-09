@@ -114,11 +114,9 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth,
 
 func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error) {
 	var res *FinalProposalCounts
-	err := r.db.Raw(`select countIf(state='succeeded') as Succeeded, countIf(state in ('succeeded', 'failed', 'defeated')) as Finished 
-    							from(
-									select proposal_id, argMax(state, created_at) as state from proposals_raw
-                             			where dao_id = ?
-                                                group by proposal_id)`, id).
+	err := r.db.Raw(`select uniqIf(proposal_id, state='succeeded') as Succeeded, uniq(proposal_id) as Finished
+							from proposals_raw
+								where dao_id = ? and state in ('succeeded', 'failed', 'defeated')`, id).
 		Scan(&res).
 		Error
 	return res, err

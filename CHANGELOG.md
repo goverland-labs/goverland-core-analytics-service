@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.11] - 2023-11-09
+
+### Changed
+- The proposal total calculation
+
 ## [0.1.10] - 2023-11-07
 
 ### Fixed

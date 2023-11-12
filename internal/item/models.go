@@ -65,6 +65,12 @@ type MonthlyUser struct {
 	ActiveUsers   uint64
 }
 
+type MonthlyTotal struct {
+	PeriodStarted time.Time
+	Total         uint64
+	TotalOfNew    uint64
+}
+
 type ProposalsByMonth struct {
 	PeriodStarted  time.Time
 	ProposalsCount uint64
@@ -108,6 +114,31 @@ type Strategy struct {
 	Name    string
 	Network string
 	Params  map[string]interface{}
+}
+
+type VoterTotals struct {
+	VoterTotal           uint64
+	VoterTotalPrevPeriod uint64
+	VotesTotal           uint64
+	VotesTotalPrevPeriod uint64
+}
+
+type ActiveDaoProposalTotals struct {
+	DaoTotal                uint64
+	DaoTotalPrevPeriod      uint64
+	ProposalTotal           uint64
+	ProposalTotalPrevPeriod uint64
+}
+
+type TotalsForTwoPeriods struct {
+	Current  uint64
+	Previous uint64
+}
+type EcosystemTotals struct {
+	Daos      TotalsForTwoPeriods
+	Proposals TotalsForTwoPeriods
+	Voters    TotalsForTwoPeriods
+	Votes     TotalsForTwoPeriods
 }
 
 type Strategies []Strategy

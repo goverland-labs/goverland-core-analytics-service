@@ -22,6 +22,11 @@ type DataProvider interface {
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
 	GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error)
 	GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error)
+	GetVoterTotalsForPeriods(periodInDays uint32) (*VoterTotals, error)
+	GetDaoProposalTotalsForPeriods(periodInDays uint32) (*ActiveDaoProposalTotals, error)
+	GetMonthlyDaos() ([]*MonthlyTotal, error)
+	GetMonthlyProposals() ([]*MonthlyTotal, error)
+	GetMonthlyVoters() ([]*MonthlyTotal, error)
 }
 
 type Service struct {
@@ -78,4 +83,39 @@ func (s *Service) GetMutualDaos(id uuid.UUID, limit uint64) ([]*MutualDao, error
 
 func (s *Service) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error) {
 	return s.repo.GetTopVotersByVp(id, limit)
+}
+
+func (s *Service) GetTotalsForLastPeriods(period uint32) (*EcosystemTotals, error) {
+	dp, _ := s.repo.GetDaoProposalTotalsForPeriods(period)
+	vv, _ := s.repo.GetVoterTotalsForPeriods(period)
+	return &EcosystemTotals{
+		Daos: TotalsForTwoPeriods{
+			Current:  dp.DaoTotal,
+			Previous: dp.DaoTotalPrevPeriod,
+		},
+		Proposals: TotalsForTwoPeriods{
+			Current:  dp.ProposalTotal,
+			Previous: dp.ProposalTotalPrevPeriod,
+		},
+		Voters: TotalsForTwoPeriods{
+			Current:  vv.VoterTotal,
+			Previous: vv.VoterTotalPrevPeriod,
+		},
+		Votes: TotalsForTwoPeriods{
+			Current:  vv.VotesTotal,
+			Previous: vv.VotesTotalPrevPeriod,
+		},
+	}, nil
+}
+
+func (s *Service) GetMonthlyDaos() ([]*MonthlyTotal, error) {
+	return s.repo.GetMonthlyDaos()
+}
+
+func (s *Service) GetMonthlyProposals() ([]*MonthlyTotal, error) {
+	return s.repo.GetMonthlyProposals()
+}
+
+func (s *Service) GetMonthlyVoters() ([]*MonthlyTotal, error) {
+	return s.repo.GetMonthlyVoters()
 }

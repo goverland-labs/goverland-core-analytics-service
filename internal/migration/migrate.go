@@ -21,6 +21,7 @@ func GetAllMigrations() []*Migration {
 		NewMigration(1, Migration001InitTables),
 		NewMigration(2, Migration002AddEventTime),
 		NewMigration(3, Migration003InitMv),
+		NewMigration(4, Migration004InitMv),
 	}
 }
 

@@ -137,6 +137,51 @@ func (s *Server) GetDaosVotersParticipateIn(_ context.Context, req *internalapi.
 	}, nil
 }
 
+func (s *Server) GetTotalsForLastPeriods(_ context.Context, req *internalapi.TotalsForLastPeriodsRequest) (*internalapi.TotalsForLastPeriodsResponse, error) {
+	totals, err := s.service.GetTotalsForLastPeriods(req.GetPeriodInDays())
+
+	return &internalapi.TotalsForLastPeriodsResponse{
+		Daos: &internalapi.Totals{
+			CurrentPeriodTotal:  totals.Daos.Current,
+			PreviousPeriodTotal: totals.Daos.Previous,
+		},
+		Proposals: &internalapi.Totals{
+			CurrentPeriodTotal:  totals.Proposals.Current,
+			PreviousPeriodTotal: totals.Proposals.Previous,
+		},
+		Voters: &internalapi.Totals{
+			CurrentPeriodTotal:  totals.Voters.Current,
+			PreviousPeriodTotal: totals.Voters.Previous,
+		},
+		Votes: &internalapi.Totals{
+			CurrentPeriodTotal:  totals.Votes.Current,
+			PreviousPeriodTotal: totals.Votes.Previous,
+		},
+	}, err
+}
+
+func (s *Server) GetMonthlyActive(_ context.Context, req *internalapi.MonthlyActiveRequest) (*internalapi.MonthlyActiveResponse, error) {
+	var (
+		mt  []*MonthlyTotal
+		err error
+	)
+	switch req.Type {
+	case internalapi.ObjectType_OBJECT_TYPE_DAO:
+		mt, err = s.service.GetMonthlyDaos()
+	case internalapi.ObjectType_OBJECT_TYPE_PROPOSAL:
+		mt, err = s.service.GetMonthlyProposals()
+	case internalapi.ObjectType_OBJECT_TYPE_VOTER:
+		mt, err = s.service.GetMonthlyVoters()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &internalapi.MonthlyActiveResponse{
+		TotalsByMonth: convertMonthlyTotalsToAPI(mt),
+	}, nil
+}
+
 func getDaoUuid(daoId string) (uuid.UUID, error) {
 	if daoId == "" {
 		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")
@@ -206,6 +251,19 @@ func convertMutualDaoToAPI(daos []*MutualDao) []*internalapi.DaoVotersParticipat
 			DaoId:         dao.DaoID.String(),
 			VotersCount:   dao.VotersCount,
 			PercentVoters: dao.VotersPercent,
+		}
+	}
+
+	return res
+}
+
+func convertMonthlyTotalsToAPI(mt []*MonthlyTotal) []*internalapi.TotalsByMonth {
+	res := make([]*internalapi.TotalsByMonth, len(mt))
+	for i, t := range mt {
+		res[i] = &internalapi.TotalsByMonth{
+			PeriodStarted:   timestamppb.New(t.PeriodStarted),
+			Total:           t.Total,
+			NewObjectsTotal: t.TotalOfNew,
 		}
 	}
 

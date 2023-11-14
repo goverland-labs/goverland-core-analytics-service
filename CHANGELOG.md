@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.12] - 2023-11-13
+
+### Added 
+-Ecosystem charts
+
 ## [0.1.11] - 2023-11-09
 
 ### Changed

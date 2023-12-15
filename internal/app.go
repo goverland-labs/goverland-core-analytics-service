@@ -88,6 +88,7 @@ func (a *Application) bootstrap() error {
 
 		// Init Workers: Application
 		a.initGRPCWorker,
+		a.initPopularityIndexWorker,
 
 		// Init Workers: System
 		a.initPrometheusWorker,
@@ -240,6 +241,14 @@ func (a *Application) initGRPCWorker() error {
 	internalapi.RegisterAnalyticsServer(srv, item.NewServer(a.service))
 
 	a.manager.AddWorker(grpcsrv.NewGrpcServerWorker("gRPC server", srv, a.cfg.InternalAPI.Bind))
+
+	return nil
+}
+
+func (a *Application) initPopularityIndexWorker() error {
+
+	worker := item.NewPopularityWorker(a.service)
+	a.manager.AddWorker(process.NewCallbackWorker("popularity index calculation", worker.Process))
 
 	return nil
 }

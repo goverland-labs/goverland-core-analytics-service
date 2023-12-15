@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.13] - 2023-12-15
+
+### Added
+-Popularity index calculation
+
 ## [0.1.12] - 2023-11-13
 
 ### Added 

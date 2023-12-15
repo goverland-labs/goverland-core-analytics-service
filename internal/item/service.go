@@ -3,6 +3,8 @@ package item
 import (
 	"context"
 	"errors"
+	pevents "github.com/goverland-labs/platform-events/events/core"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
@@ -20,13 +22,17 @@ type DataProvider interface {
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
-	GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error)
+	GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error)
 	GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error)
 	GetVoterTotalsForPeriods(periodInDays uint32) (*VoterTotals, error)
 	GetDaoProposalTotalsForPeriods(periodInDays uint32) (*ActiveDaoProposalTotals, error)
 	GetMonthlyDaos() ([]*MonthlyTotal, error)
 	GetMonthlyProposals() ([]*MonthlyTotal, error)
 	GetMonthlyVoters() ([]*MonthlyTotal, error)
+	GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaoNewVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaos() ([]uuid.UUID, error)
 }
 
 type Service struct {
@@ -118,4 +124,46 @@ func (s *Service) GetMonthlyProposals() ([]*MonthlyTotal, error) {
 
 func (s *Service) GetMonthlyVoters() ([]*MonthlyTotal, error) {
 	return s.repo.GetMonthlyVoters()
+}
+
+func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
+	daos, err := s.repo.GetDaos()
+	if err != nil {
+		return err
+	}
+
+	dp, err := s.repo.GetDaoProposalForPeriod(120)
+	if err != nil {
+		return err
+	}
+
+	dv, err := s.repo.GetDaoVotersForPeriod(120)
+	if err != nil {
+		return err
+	}
+
+	dnv, err := s.repo.GetDaoNewVotersForPeriod(120)
+	if err != nil {
+		return err
+	}
+
+	dpt, err := s.repo.GetDaoProposalTotalsForPeriods(120)
+	if err != nil {
+		return err
+	}
+	proposalTotal := float64(dpt.ProposalTotal)
+	vt, err := s.repo.GetVoterTotalsForPeriods(120)
+	if err != nil {
+		return err
+	}
+	voterTotal := float64(vt.VoterTotal)
+
+	for _, dao := range daos {
+		index := 900*dp[dao]/proposalTotal + 1000*(2*dv[dao]-dnv[dao])/voterTotal
+		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
+			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {
+			log.Error().Err(err).Msgf("publish dao event #%s", dao)
+		}
+	}
+	return err
 }

@@ -124,8 +124,8 @@ func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, err
 	return res, err
 }
 
-func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error) {
-	var res []*Dao
+func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error) {
+	var res []*DaoVoters
 	err := r.db.Raw(`
 		select dao_id as DaoID, uniq(voter) as VotersCount from dao_voters_start_mv 
 		    where voter in (select voter from dao_voters_start_mv where dao_id = ?)
@@ -272,4 +272,55 @@ func (r *Repo) GetMonthlyVoters() ([]*MonthlyTotal, error) {
 	}
 
 	return res, err
+}
+
+func (r *Repo) GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error) {
+	var res []*TotalForDaos
+	err := r.db.Raw(`select dao_id as DaoID, uniq(proposal_id) as Total from proposals_raw where dateDiff('day', created_day, today()) <= ? and created_day <= today()
+		group by dao_id`, period).
+		Scan(&res).
+		Error
+
+	return convertResultToMap(res), err
+}
+
+func (r *Repo) GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error) {
+	var res []*TotalForDaos
+	err := r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
+							from votes_raw
+								where dateDiff('day', created_day, today())<=? group by dao_id;`, period).
+		Scan(&res).
+		Error
+
+	return convertResultToMap(res), err
+}
+
+func (r *Repo) GetDaoNewVotersForPeriod(period uint8) (map[uuid.UUID]float64, error) {
+	var res []*TotalForDaos
+	err := r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
+							from (select voter, dao_id, minMerge(start_date) as first_day 
+							      		from dao_voters_start group by dao_id, voter) voters
+											where dateDiff('day', first_day, today())<=? group by dao_id`, period).
+		Scan(&res).
+		Error
+
+	return convertResultToMap(res), err
+}
+
+func (r *Repo) GetDaos() ([]uuid.UUID, error) {
+	var res []uuid.UUID
+	err := r.db.Raw(`select distinct dao_id from daos_raw`).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
+func convertResultToMap(res []*TotalForDaos) map[uuid.UUID]float64 {
+	m := make(map[uuid.UUID]float64)
+	for _, v := range res {
+		m[v.DaoID] = v.Total
+	}
+
+	return m
 }

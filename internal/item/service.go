@@ -3,12 +3,16 @@ package item
 import (
 	"context"
 	"errors"
+	pevents "github.com/goverland-labs/platform-events/events/core"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 )
+
+const popularDaoIndexCalculationPeriod = 120
 
 type Publisher interface {
 	PublishJSON(ctx context.Context, subject string, obj any) error
@@ -20,13 +24,17 @@ type DataProvider interface {
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
-	GetMutualDaos(id uuid.UUID, limit uint64) ([]*Dao, error)
+	GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error)
 	GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error)
 	GetVoterTotalsForPeriods(periodInDays uint32) (*VoterTotals, error)
 	GetDaoProposalTotalsForPeriods(periodInDays uint32) (*ActiveDaoProposalTotals, error)
 	GetMonthlyDaos() ([]*MonthlyTotal, error)
 	GetMonthlyProposals() ([]*MonthlyTotal, error)
 	GetMonthlyVoters() ([]*MonthlyTotal, error)
+	GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaoNewVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaos() ([]uuid.UUID, error)
 }
 
 type Service struct {
@@ -118,4 +126,50 @@ func (s *Service) GetMonthlyProposals() ([]*MonthlyTotal, error) {
 
 func (s *Service) GetMonthlyVoters() ([]*MonthlyTotal, error) {
 	return s.repo.GetMonthlyVoters()
+}
+
+func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
+	daos, err := s.repo.GetDaos()
+	if err != nil {
+		return err
+	}
+
+	dp, err := s.repo.GetDaoProposalForPeriod(popularDaoIndexCalculationPeriod)
+	if err != nil {
+		return err
+	}
+
+	dv, err := s.repo.GetDaoVotersForPeriod(popularDaoIndexCalculationPeriod)
+	if err != nil {
+		return err
+	}
+
+	dnv, err := s.repo.GetDaoNewVotersForPeriod(popularDaoIndexCalculationPeriod)
+	if err != nil {
+		return err
+	}
+
+	dpt, err := s.repo.GetDaoProposalTotalsForPeriods(popularDaoIndexCalculationPeriod)
+	if err != nil {
+		return err
+	}
+	proposalTotal := float64(dpt.ProposalTotal)
+	vt, err := s.repo.GetVoterTotalsForPeriods(popularDaoIndexCalculationPeriod)
+	if err != nil {
+		return err
+	}
+	voterTotal := float64(vt.VoterTotal)
+
+	for _, dao := range daos {
+		// Experimental calculation that can be updated not once
+		// Index is based on proposal and voter counts.
+		// Number of voters has paramount importance(so the coefficient for voters > the coefficient for proposals).
+		// Also 'old' voters has more significance than new voters(that's why we have dv[dao] + (dv[dao]-dnv[dao])).
+		index := 900*dp[dao]/proposalTotal + 1000*(2*dv[dao]-dnv[dao])/voterTotal
+		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
+			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {
+			log.Error().Err(err).Msgf("publish dao event #%s", dao)
+		}
+	}
+	return err
 }

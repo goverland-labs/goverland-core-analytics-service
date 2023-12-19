@@ -91,9 +91,14 @@ type ExclusiveVoters struct {
 	Total     uint32
 }
 
-type Dao struct {
+type DaoVoters struct {
 	DaoID       uuid.UUID
 	VotersCount uint32
+}
+
+type TotalForDaos struct {
+	DaoID uuid.UUID
+	Total float64
 }
 
 type MutualDao struct {

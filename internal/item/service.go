@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const popularDaoIndexCalculationPeriod = 120
+
 type Publisher interface {
 	PublishJSON(ctx context.Context, subject string, obj any) error
 }
@@ -132,33 +134,37 @@ func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
 		return err
 	}
 
-	dp, err := s.repo.GetDaoProposalForPeriod(120)
+	dp, err := s.repo.GetDaoProposalForPeriod(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
 
-	dv, err := s.repo.GetDaoVotersForPeriod(120)
+	dv, err := s.repo.GetDaoVotersForPeriod(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
 
-	dnv, err := s.repo.GetDaoNewVotersForPeriod(120)
+	dnv, err := s.repo.GetDaoNewVotersForPeriod(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
 
-	dpt, err := s.repo.GetDaoProposalTotalsForPeriods(120)
+	dpt, err := s.repo.GetDaoProposalTotalsForPeriods(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
 	proposalTotal := float64(dpt.ProposalTotal)
-	vt, err := s.repo.GetVoterTotalsForPeriods(120)
+	vt, err := s.repo.GetVoterTotalsForPeriods(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
 	voterTotal := float64(vt.VoterTotal)
 
 	for _, dao := range daos {
+		// Experimental calculation that can be updated not once
+		// Index is based on proposal and voter counts.
+		// Number of voters has paramount importance(so the coefficient for voters > the coefficient for proposals).
+		// Also 'old' voters has more significance than new voters(that's why we have dv[dao] + (dv[dao]-dnv[dao])).
 		index := 900*dp[dao]/proposalTotal + 1000*(2*dv[dao]-dnv[dao])/voterTotal
 		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
 			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {

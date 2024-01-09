@@ -276,8 +276,10 @@ func (r *Repo) GetMonthlyVoters() ([]*MonthlyTotal, error) {
 
 func (r *Repo) GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error) {
 	var res []*TotalForDaos
-	err := r.db.Raw(`select dao_id as DaoID, uniq(proposal_id) as Total from proposals_raw where dateDiff('day', created_day, today()) <= ? and created_day <= today()
-		group by dao_id`, period).
+	err := r.db.Raw(`select dao_id as DaoID, uniq(proposal_id) as Total 
+					     	from proposals_raw 
+						  		where event_type = 'core.proposal.created' and dateDiff('day', created_day, today()) <= ? and created_day <= today()
+                                            and proposal_id in (select proposal_id from votes_raw group by proposal_id having uniq(voter) >= 5) group by dao_id`, period).
 		Scan(&res).
 		Error
 
@@ -286,11 +288,37 @@ func (r *Repo) GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, err
 
 func (r *Repo) GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error) {
 	var res []*TotalForDaos
-	err := r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
+	var err error
+	if period == 0 {
+		err = r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
+							from votes_raw group by dao_id`).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
 							from votes_raw
-								where dateDiff('day', created_day, today())<=? group by dao_id;`, period).
-		Scan(&res).
-		Error
+								where dateDiff('day', created_day, today())<=? group by dao_id`, period).
+			Scan(&res).
+			Error
+	}
+	return convertResultToMap(res), err
+}
+
+func (r *Repo) GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error) {
+	var res []*TotalForDaos
+	var err error
+	if period == 0 {
+		err = r.db.Raw(`select dao_id as DaoID, uniq(voter, proposal_id) as Total 
+							from votes_raw group by dao_id`).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`select dao_id as DaoID, uniq(voter, proposal_id) as Total 
+							from votes_raw
+								where dateDiff('day', created_day, today())<=? group by dao_id`, period).
+			Scan(&res).
+			Error
+	}
 
 	return convertResultToMap(res), err
 }

@@ -8,11 +8,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+	"math"
 
 	"github.com/google/uuid"
 )
 
-const popularDaoIndexCalculationPeriod = 120
+const popularDaoIndexCalculationPeriod = 90
 
 type Publisher interface {
 	PublishJSON(ctx context.Context, subject string, obj any) error
@@ -33,7 +34,7 @@ type DataProvider interface {
 	GetMonthlyVoters() ([]*MonthlyTotal, error)
 	GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
-	GetDaoNewVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetDaos() ([]uuid.UUID, error)
 }
 
@@ -144,28 +145,25 @@ func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
 		return err
 	}
 
-	dnv, err := s.repo.GetDaoNewVotersForPeriod(popularDaoIndexCalculationPeriod)
+	dvo, err := s.repo.GetDaoVotersForPeriod(0)
 	if err != nil {
 		return err
 	}
 
-	dpt, err := s.repo.GetDaoProposalTotalsForPeriods(popularDaoIndexCalculationPeriod)
+	dvs, err := s.repo.GetDaoVotesForPeriod(popularDaoIndexCalculationPeriod)
 	if err != nil {
 		return err
 	}
-	proposalTotal := float64(dpt.ProposalTotal)
-	vt, err := s.repo.GetVoterTotalsForPeriods(popularDaoIndexCalculationPeriod)
+
+	dvso, err := s.repo.GetDaoVotesForPeriod(0)
 	if err != nil {
 		return err
 	}
-	voterTotal := float64(vt.VoterTotal)
 
 	for _, dao := range daos {
 		// Experimental calculation that can be updated not once
-		// Index is based on proposal and voter counts.
-		// Number of voters has paramount importance(so the coefficient for voters > the coefficient for proposals).
-		// Also 'old' voters has more significance than new voters(that's why we have dv[dao] + (dv[dao]-dnv[dao])).
-		index := 900*dp[dao]/proposalTotal + 1000*(2*dv[dao]-dnv[dao])/voterTotal
+		// Index is based on proposal, voter, votes counts.
+		index := math.Log(max(dp[dao], math.E)) * (math.Log(max(dvs[dao], 1)) + 0.3*math.Log(max(dvso[dao], 1)) + math.Log2(max(dv[dao], 1)) + 0.3*math.Log2(max(dvo[dao], 1)))
 		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
 			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {
 			log.Error().Err(err).Msgf("publish dao event #%s", dao)

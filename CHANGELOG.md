@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Popular index calculation
+
 ## [0.1.13] - 2023-12-15
 
 ### Added

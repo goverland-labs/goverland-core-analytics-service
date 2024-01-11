@@ -323,18 +323,6 @@ func (r *Repo) GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	return convertResultToMap(res), err
 }
 
-func (r *Repo) GetDaoNewVotersForPeriod(period uint8) (map[uuid.UUID]float64, error) {
-	var res []*TotalForDaos
-	err := r.db.Raw(`select dao_id as DaoID, uniq(voter) as Total 
-							from (select voter, dao_id, minMerge(start_date) as first_day 
-							      		from dao_voters_start group by dao_id, voter) voters
-											where dateDiff('day', first_day, today())<=? group by dao_id`, period).
-		Scan(&res).
-		Error
-
-	return convertResultToMap(res), err
-}
-
 func (r *Repo) GetDaos() ([]uuid.UUID, error) {
 	var res []uuid.UUID
 	err := r.db.Raw(`select distinct dao_id from daos_raw`).

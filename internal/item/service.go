@@ -163,7 +163,7 @@ func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
 	for _, dao := range daos {
 		// Experimental calculation that can be updated not once
 		// Index is based on proposal, voter, votes counts.
-		index := math.Log(max(dp[dao], math.E)) * (math.Log(max(dvs[dao], 1)) + 0.3*math.Log(max(dvso[dao], 1)) + math.Log2(max(dv[dao], 1)) + 0.3*math.Log2(max(dvo[dao], 1)))
+		index := 5*math.Log(max(dp[dao], math.E)) + math.Log2(max(dvs[dao], 1)) + 3*math.Log2(max(dv[dao], 1)) + 0.3*(math.Log2(max(dvso[dao], 1))+3*math.Log2(max(dvo[dao], 1)))
 		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
 			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {
 			log.Error().Err(err).Msgf("publish dao event #%s", dao)

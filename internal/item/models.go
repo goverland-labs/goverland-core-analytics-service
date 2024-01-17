@@ -12,7 +12,7 @@ const (
 	DaoUpdated EventType = "dao_updated"
 )
 
-var BucketMinVotes = map[uint8]string{
+var BucketMinVotes = map[uint32]string{
 	1: "1",
 	2: "2",
 	3: "3-4",
@@ -77,7 +77,7 @@ type ProposalsByMonth struct {
 }
 
 type Bucket struct {
-	GroupId uint8
+	GroupId uint32
 	Voters  uint64
 }
 

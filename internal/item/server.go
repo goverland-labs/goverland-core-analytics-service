@@ -3,12 +3,14 @@ package item
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 type Server struct {
@@ -52,6 +54,72 @@ func (s *Server) GetVoterBuckets(_ context.Context, req *internalapi.VoterBucket
 
 	return &internalapi.VoterBucketsResponse{
 		Groups: convertBucketsToAPI(buckets),
+	}, nil
+}
+
+func (s *Server) GetVoterBucketsV2(_ context.Context, req *internalapi.VoterBucketsRequestV2) (*internalapi.VoterBucketsResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	buckets, err := s.service.GetVotesGroups(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no votes for this dao ID")
+	}
+	groups := req.Groups
+
+	res := make([]*internalapi.VoterGroup, len(groups)+1)
+	var count uint64 = 0
+	groupId := 0
+	label := ""
+	for _, bucket := range buckets {
+		if groupId >= len(groups) || bucket.GroupId <= groups[groupId] {
+			count += bucket.Voters
+		} else {
+			res[groupId] = &internalapi.VoterGroup{
+				Votes:  "",
+				Voters: count,
+			}
+			groupId++
+			count = bucket.Voters
+		}
+	}
+
+	for i := 0; i <= len(groups); i++ {
+		if i == 0 {
+			limit := groups[0]
+			if limit == 1 {
+				label = "1"
+			} else {
+				label = fmt.Sprintf("%d-", limit)
+			}
+		} else if i == len(groups) {
+			label = fmt.Sprintf("%d+", groups[i-1]+1)
+		} else {
+			if groups[i]-groups[i-1] == 1 {
+				label = strconv.Itoa(int(groups[i]))
+			} else {
+				label = fmt.Sprintf("%d-%d", groups[i-1]+1, groups[i])
+			}
+		}
+		if i == groupId {
+			res[i] = &internalapi.VoterGroup{
+				Votes:  label,
+				Voters: count,
+			}
+		} else if i > groupId {
+			res[i] = &internalapi.VoterGroup{
+				Votes:  label,
+				Voters: 0,
+			}
+		} else {
+			res[i].Votes = label
+		}
+	}
+
+	return &internalapi.VoterBucketsResponse{
+		Groups: res,
 	}, nil
 }
 

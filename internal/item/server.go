@@ -58,6 +58,11 @@ func (s *Server) GetVoterBuckets(_ context.Context, req *internalapi.VoterBucket
 }
 
 func (s *Server) GetVoterBucketsV2(_ context.Context, req *internalapi.VoterBucketsRequestV2) (*internalapi.VoterBucketsResponse, error) {
+	groups := req.Groups
+	gcount := len(groups)
+	if gcount == 0 {
+		return nil, nil
+	}
 	id, err := getDaoUuid(req.GetDaoId())
 	if err != nil {
 		return nil, err
@@ -67,56 +72,40 @@ func (s *Server) GetVoterBucketsV2(_ context.Context, req *internalapi.VoterBuck
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no votes for this dao ID")
 	}
-	groups := req.Groups
 
-	res := make([]*internalapi.VoterGroup, len(groups)+1)
+	res := make([]*internalapi.VoterGroup, len(groups))
 	var count uint64 = 0
 	groupId := 0
-	label := ""
 	for _, bucket := range buckets {
-		if groupId >= len(groups) || bucket.GroupId <= groups[groupId] {
-			count += bucket.Voters
-		} else {
-			res[groupId] = &internalapi.VoterGroup{
-				Votes:  "",
-				Voters: count,
+		if bucket.GroupId >= groups[groupId] {
+			if groupId == gcount-1 || bucket.GroupId < groups[groupId+1] {
+				count += bucket.Voters
+			} else {
+				res[groupId] = &internalapi.VoterGroup{
+					Votes:  strconv.Itoa(int(groups[groupId])),
+					Voters: count,
+				}
+				groupId++
+				count = bucket.Voters
 			}
-			groupId++
-			count = bucket.Voters
 		}
 	}
 
-	for i := 0; i <= len(groups); i++ {
-		if i == 0 {
-			limit := groups[0]
-			if limit == 1 {
-				label = "1"
-			} else {
-				label = fmt.Sprintf("%d-", limit)
-			}
-		} else if i == len(groups) {
-			label = fmt.Sprintf("%d+", groups[i-1]+1)
-		} else {
-			if groups[i]-groups[i-1] == 1 {
-				label = strconv.Itoa(int(groups[i]))
-			} else {
-				label = fmt.Sprintf("%d-%d", groups[i-1]+1, groups[i])
-			}
-		}
+	for i := groupId; i < gcount; i++ {
 		if i == groupId {
 			res[i] = &internalapi.VoterGroup{
-				Votes:  label,
+				Votes:  strconv.Itoa(int(groups[i])),
 				Voters: count,
 			}
-		} else if i > groupId {
+		} else {
 			res[i] = &internalapi.VoterGroup{
-				Votes:  label,
+				Votes:  strconv.Itoa(int(groups[i])),
 				Voters: 0,
 			}
-		} else {
-			res[i].Votes = label
 		}
 	}
+
+	res[gcount-1].Votes = fmt.Sprintf("%d+", groups[gcount-1])
 
 	return &internalapi.VoterBucketsResponse{
 		Groups: res,

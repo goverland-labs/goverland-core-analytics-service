@@ -3,12 +3,14 @@ package item
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 type Server struct {
@@ -52,6 +54,61 @@ func (s *Server) GetVoterBuckets(_ context.Context, req *internalapi.VoterBucket
 
 	return &internalapi.VoterBucketsResponse{
 		Groups: convertBucketsToAPI(buckets),
+	}, nil
+}
+
+func (s *Server) GetVoterBucketsV2(_ context.Context, req *internalapi.VoterBucketsRequestV2) (*internalapi.VoterBucketsResponse, error) {
+	groups := req.Groups
+	gcount := len(groups)
+	if gcount == 0 {
+		return nil, nil
+	}
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+
+	buckets, err := s.service.GetVotesGroups(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no votes for this dao ID")
+	}
+
+	res := make([]*internalapi.VoterGroup, len(groups))
+	var count uint64 = 0
+	groupId := 0
+	for _, bucket := range buckets {
+		if bucket.GroupId >= groups[groupId] {
+			if groupId == gcount-1 || bucket.GroupId < groups[groupId+1] {
+				count += bucket.Voters
+			} else {
+				res[groupId] = &internalapi.VoterGroup{
+					Votes:  strconv.Itoa(int(groups[groupId])),
+					Voters: count,
+				}
+				groupId++
+				count = bucket.Voters
+			}
+		}
+	}
+
+	for i := groupId; i < gcount; i++ {
+		if i == groupId {
+			res[i] = &internalapi.VoterGroup{
+				Votes:  strconv.Itoa(int(groups[i])),
+				Voters: count,
+			}
+		} else {
+			res[i] = &internalapi.VoterGroup{
+				Votes:  strconv.Itoa(int(groups[i])),
+				Voters: 0,
+			}
+		}
+	}
+
+	res[gcount-1].Votes = fmt.Sprintf("%d+", groups[gcount-1])
+
+	return &internalapi.VoterBucketsResponse{
+		Groups: res,
 	}, nil
 }
 

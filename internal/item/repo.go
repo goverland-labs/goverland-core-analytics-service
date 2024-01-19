@@ -81,6 +81,26 @@ func (r *Repo) GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error) {
 	return res, err
 }
 
+func (r *Repo) GetVotesGroupsByDaoId(id uuid.UUID) ([]*Bucket, error) {
+	var res []*Bucket
+	err := r.db.Raw(`
+		SELECT GroupId,
+		       count() AS Voters
+		FROM (
+		    SELECT uniq(proposal_id) AS GroupId
+		    FROM votes_raw
+		    WHERE dao_id = ?
+		    GROUP BY voter
+		) AS votes_count
+		GROUP BY GroupId
+		ORDER BY GroupId
+		SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
 func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error) {
 	var res *ExclusiveVoters
 	err := r.db.Raw(`

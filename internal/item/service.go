@@ -27,7 +27,8 @@ type DataProvider interface {
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
 	GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error)
-	GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error)
+	GetTopVotersByVp(id uuid.UUID, limit int, offset int) ([]*VoterWithVp, error)
+	GetTotalVpAvgForActiveVoters(id uuid.UUID) (*VpAvgTotal, error)
 	GetVoterTotalsForPeriods(periodInDays uint32) (*VoterTotals, error)
 	GetDaoProposalTotalsForPeriods(periodInDays uint32) (*ActiveDaoProposalTotals, error)
 	GetMonthlyDaos() ([]*MonthlyTotal, error)
@@ -95,8 +96,12 @@ func (s *Service) GetMutualDaos(id uuid.UUID, limit uint64) ([]*MutualDao, error
 	return res, nil
 }
 
-func (s *Service) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error) {
-	return s.repo.GetTopVotersByVp(id, limit)
+func (s *Service) GetTopVotersByVp(id uuid.UUID, offset uint32, limit uint32) ([]*VoterWithVp, error) {
+	return s.repo.GetTopVotersByVp(id, int(offset), int(limit))
+}
+
+func (s *Service) GetTotalVpAvg(id uuid.UUID) (*VpAvgTotal, error) {
+	return s.repo.GetTotalVpAvgForActiveVoters(id)
 }
 
 func (s *Service) GetTotalsForLastPeriods(period uint32) (*EcosystemTotals, error) {

@@ -146,6 +146,11 @@ type EcosystemTotals struct {
 	Votes     TotalsForTwoPeriods
 }
 
+type VpAvgTotal struct {
+	VpAvgs float32
+	Voters uint64
+}
+
 type Strategies []Strategy
 
 type Categories []string

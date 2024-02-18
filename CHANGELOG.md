@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.17] - 2024-02-18
+
+### Added
+- Totals for Vp
+
 ## [0.1.16] - 2024-01-17
 
 ### Added

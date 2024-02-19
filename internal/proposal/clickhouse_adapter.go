@@ -17,7 +17,7 @@ type ClickhouseAdapter struct {
 }
 
 func (c ClickhouseAdapter) GetInsertQuery() string {
-	return "INSERT INTO proposals_raw (dao_id, event_type, created_at, proposal_id, network, strategies, author, type, title, body, choices, start, end, quorum, state, scores, scores_state, scores_total, scores_updated, votes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	return "INSERT INTO proposals_raw (dao_id, event_type, created_at, proposal_id, network, strategies, author, type, title, body, choices, start, end, quorum, state, scores, scores_state, scores_total, scores_updated, votes, spam) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 }
 
 func (c ClickhouseAdapter) Values(pl Payload) []any {
@@ -44,6 +44,7 @@ func (c ClickhouseAdapter) Values(pl Payload) []any {
 		pl.Proposal.ScoresTotal,
 		int32(pl.Proposal.ScoresUpdated),
 		int32(pl.Proposal.Votes),
+		pl.Proposal.Spam,
 	}
 }
 

@@ -284,6 +284,7 @@ func convertMonthlyNewProposalsToAPI(proposals []*ProposalsByMonth) []*internala
 		res[i] = &internalapi.ProposalsByMonth{
 			PeriodStarted:  timestamppb.New(mp.PeriodStarted),
 			ProposalsCount: mp.ProposalsCount,
+			SpamCount:      mp.SpamCount,
 		}
 	}
 

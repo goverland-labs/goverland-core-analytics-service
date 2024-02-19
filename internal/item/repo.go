@@ -122,7 +122,8 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth,
 	var res []*ProposalsByMonth
 	err := r.db.Raw(`
 		SELECT toStartOfMonth(created_at) AS PeriodStarted,
-		       count(distinct proposal_id) AS ProposalsCount
+		       uniq(proposal_id) AS ProposalsCount,
+		       uniqIf(proposal_id, spam=true) AS SpamCount
 		FROM proposals_raw 
 		WHERE dao_id = ? 
 		GROUP BY PeriodStarted

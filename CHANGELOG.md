@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.18] - 2024-02-18
+
+### Added
+- Spam count for monthly new proposals
+
 ## [0.1.17] - 2024-02-18
 
 ### Added

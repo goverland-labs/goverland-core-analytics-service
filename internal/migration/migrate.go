@@ -22,6 +22,7 @@ func GetAllMigrations() []*Migration {
 		NewMigration(2, Migration002AddEventTime),
 		NewMigration(3, Migration003InitMv),
 		NewMigration(4, Migration004InitMv),
+		NewMigration(5, Migration005AddSpamFlag),
 	}
 }
 

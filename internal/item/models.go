@@ -74,6 +74,7 @@ type MonthlyTotal struct {
 type ProposalsByMonth struct {
 	PeriodStarted  time.Time
 	ProposalsCount uint64
+	SpamCount      uint64
 }
 
 type Bucket struct {

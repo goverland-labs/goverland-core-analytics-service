@@ -167,13 +167,15 @@ func (s *Server) GetTopVotersByVp(_ context.Context, req *internalapi.TopVotersB
 	if err != nil {
 		return nil, err
 	}
-
-	voters, err := s.service.GetTopVotersByVp(id, req.Limit)
+	totals, _ := s.service.GetTotalVpAvg(id)
+	voters, err := s.service.GetTopVotersByVp(id, req.GetOffset(), req.GetLimit())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no users for this dao ID")
 	}
 
 	return &internalapi.TopVotersByVpResponse{
+		Voters:      totals.Voters,
+		TotalAvgVp:  totals.VpAvgs,
 		VoterWithVp: convertVotersWithVpToAPI(voters),
 	}, nil
 }

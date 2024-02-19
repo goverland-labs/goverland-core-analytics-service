@@ -159,18 +159,33 @@ func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error) {
 	return res, err
 }
 
-func (r *Repo) GetTopVotersByVp(id uuid.UUID, limit uint64) ([]*VoterWithVp, error) {
+func (r *Repo) GetTopVotersByVp(id uuid.UUID, offset int, limit int) ([]*VoterWithVp, error) {
 	var res []*VoterWithVp
 	err := r.db.Raw(`
-		select voter as Voter, avg(vp) as VpAvg, count() as VotesCount 
+		select voter as Voter, avg(vp) as VpAvg, uniq(proposal_id) as VotesCount 
 			from votes_raw 
 				where dao_id = ? and 
 				      voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
 		        group by voter 
-		        order by (VpAvg, VotesCount) desc 
-		        limit ? 
+		        order by (VpAvg, VotesCount) desc limit ? offset ?
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
-    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, id, limit).
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, id, limit, offset).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
+func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID) (*VpAvgTotal, error) {
+	var res *VpAvgTotal
+	err := r.db.Raw(`select sum(VpAvg) as VpAvgs, uniq(Voter) as Voters from
+                                   (select voter as Voter, avg(vp) as VpAvg
+                        			from votes_raw
+                        			where dao_id = ? and
+                                		voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
+                        			group by voter) 
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, id).
 		Scan(&res).
 		Error
 

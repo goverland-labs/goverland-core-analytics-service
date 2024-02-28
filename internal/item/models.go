@@ -1,9 +1,10 @@
 package item
 
 import (
-	"github.com/google/uuid"
-	events "github.com/goverland-labs/platform-events/events/core"
 	"time"
+
+	"github.com/google/uuid"
+	events "github.com/goverland-labs/goverland-platform-events/events/core"
 )
 
 const (

@@ -3,7 +3,7 @@ package vote
 import (
 	"time"
 
-	"github.com/goverland-labs/platform-events/events/core"
+	"github.com/goverland-labs/goverland-platform-events/events/core"
 
 	"github.com/goverland-labs/analytics-service/pkg/helpers"
 )

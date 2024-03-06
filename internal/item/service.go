@@ -3,12 +3,13 @@ package item
 import (
 	"context"
 	"errors"
-	pevents "github.com/goverland-labs/platform-events/events/core"
+	"math"
+
+	pevents "github.com/goverland-labs/goverland-platform-events/events/core"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
-	"math"
 
 	"github.com/google/uuid"
 )

@@ -10,7 +10,8 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
-	"github.com/goverland-labs/platform-events/events/core"
+	"github.com/goverland-labs/goverland-platform-events/events/core"
+	"github.com/goverland-labs/goverland-platform-events/pkg/natsclient"
 	"github.com/nats-io/nats.go"
 	"github.com/s-larionov/process-manager"
 	gormCh "gorm.io/driver/clickhouse"
@@ -21,7 +22,6 @@ import (
 	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
 	"github.com/goverland-labs/analytics-service/pkg/pprofhandler"
 
-	"github.com/goverland-labs/analytics-service/internal/communicate"
 	"github.com/goverland-labs/analytics-service/internal/config"
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/migration"
@@ -37,7 +37,7 @@ type Application struct {
 	cfg     config.App
 	db      *gorm.DB
 
-	natsPublisher    *communicate.Publisher
+	natsPublisher    *natsclient.Publisher
 	repo             *item.Repo
 	service          *item.Service
 	clickhouseConn   *sql.DB
@@ -143,7 +143,7 @@ func (a *Application) initNats() error {
 		return err
 	}
 
-	pb, err := communicate.NewPublisher(conn)
+	pb, err := natsclient.NewPublisher(conn)
 	if err != nil {
 		return err
 	}

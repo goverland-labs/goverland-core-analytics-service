@@ -118,19 +118,34 @@ func (r *Repo) GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	return res, err
 }
 
-func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error) {
+func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID, period uint32) ([]*ProposalsByMonth, error) {
 	var res []*ProposalsByMonth
-	err := r.db.Raw(`
+	var err error
+	if period == 1 {
+		err = r.db.Raw(`
+		SELECT toStartOfDay(created_at) AS PeriodStarted,
+		       uniq(proposal_id) AS ProposalsCount,
+		       uniqIf(proposal_id, spam=true) AS SpamCount
+		FROM proposals_raw 
+		WHERE dao_id = ? and created_at >= date_sub(MONTH, 1, toStartOfDay(today()))
+		GROUP BY PeriodStarted
+		ORDER BY PeriodStarted
+		WITH FILL STEP INTERVAL 1 DAY`, id, period).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`
 		SELECT toStartOfMonth(created_at) AS PeriodStarted,
 		       uniq(proposal_id) AS ProposalsCount,
 		       uniqIf(proposal_id, spam=true) AS SpamCount
 		FROM proposals_raw 
-		WHERE dao_id = ? 
+		WHERE dao_id = ? and (0 = ? or dateDiff('month', PeriodStarted, toStartOfMonth(today())) < ?)
 		GROUP BY PeriodStarted
 		ORDER BY PeriodStarted
-		WITH FILL STEP INTERVAL 1 MONTH`, id).
-		Scan(&res).
-		Error
+		WITH FILL STEP INTERVAL 1 MONTH`, id, period, period).
+			Scan(&res).
+			Error
+	}
 
 	return res, err
 }

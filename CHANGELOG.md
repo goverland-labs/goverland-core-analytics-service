@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.20] - 2024-03-27
+
+### Added
+- Month filter for proposal endpoint
+
 ## [0.1.19] - 2024-03-06
 
 ### Changed

@@ -134,8 +134,8 @@ func (s *Server) GetMonthlyNewProposals(_ context.Context, req *internalapi.Mont
 	if err != nil {
 		return nil, err
 	}
-
-	proposals, err := s.service.GetMonthlyNewProposals(id)
+	period := req.PeriodInMonths
+	proposals, err := s.service.GetMonthlyNewProposals(id, period)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no proposals for this dao ID")
 	}

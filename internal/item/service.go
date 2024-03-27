@@ -25,7 +25,7 @@ type DataProvider interface {
 	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetVotesGroupsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
-	GetMonthlyNewProposalsByDaoId(id uuid.UUID) ([]*ProposalsByMonth, error)
+	GetMonthlyNewProposalsByDaoId(id uuid.UUID, period uint32) ([]*ProposalsByMonth, error)
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
 	GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error)
 	GetTopVotersByVp(id uuid.UUID, limit int, offset int) ([]*VoterWithVp, error)
@@ -69,8 +69,8 @@ func (s *Service) GetExclusiveVoters(id uuid.UUID) (*ExclusiveVoters, error) {
 	return s.repo.GetExclusiveVotersByDaoId(id)
 }
 
-func (s *Service) GetMonthlyNewProposals(id uuid.UUID) ([]*ProposalsByMonth, error) {
-	return s.repo.GetMonthlyNewProposalsByDaoId(id)
+func (s *Service) GetMonthlyNewProposals(id uuid.UUID, period uint32) ([]*ProposalsByMonth, error) {
+	return s.repo.GetMonthlyNewProposalsByDaoId(id, period)
 }
 
 func (s *Service) GetSucceededProposalsCount(id uuid.UUID) (*FinalProposalCounts, error) {

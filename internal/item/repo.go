@@ -18,7 +18,7 @@ func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID, period uint32) ([]*Mon
 	var au, nau []*MonthlyUser
 	var err error
 	if period == 1 {
-		var err = r.db.Raw(`SELECT toStartOfDay(created_at) as PeriodStarted, uniq(voter)
+		var err = r.db.Raw(`SELECT toStartOfDay(created_at) as PeriodStarted, uniq(voter) as ActiveUsers
 								FROM votes_raw where dao_id = ? and PeriodStarted > date_sub(MONTH, 1, toStartOfDay(today()))
 								GROUP BY PeriodStarted
 								ORDER BY PeriodStarted

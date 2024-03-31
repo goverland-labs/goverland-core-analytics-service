@@ -1,6 +1,7 @@
 package item
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -13,34 +14,69 @@ func NewRepo(db *gorm.DB) *Repo {
 	return &Repo{db: db}
 }
 
-func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error) {
+func (r *Repo) GetMonthlyActiveUsersByDaoId(id uuid.UUID, period uint32) ([]*MonthlyActiveUser, error) {
 	var au, nau []*MonthlyUser
+	var err error
+	if period == 1 {
+		var err = r.db.Raw(`SELECT toStartOfDay(created_at) as PeriodStarted, uniq(voter)
+								FROM votes_raw where dao_id = ? and PeriodStarted > date_sub(MONTH, 1, toStartOfDay(today()))
+								GROUP BY PeriodStarted
+								ORDER BY PeriodStarted
+								WITH FILL FROM date_sub(MONTH, 1, toStartOfDay(today())) TO date_add(DAY, 1, toStartOfDay(today())) STEP INTERVAL 1 DAY
+								SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
+			Scan(&au).
+			Error
+		if err != nil {
+			return nil, err
+		}
 
-	var err = r.db.Raw(`SELECT month_start AS PeriodStarted,
+		err = r.db.Raw(`SELECT PeriodStarted, uniqExact(voter) AS ActiveUsers
+							FROM (SELECT toStartOfDay(minMerge(start_date)) as PeriodStarted, voter from dao_voters_start_mv WHERE dao_id = ? group by dao_id, voter) dv
+							WHERE PeriodStarted > date_sub(MONTH, 1, toStartOfDay(today())) GROUP BY PeriodStarted
+							ORDER BY PeriodStarted
+							WITH FILL FROM date_sub(MONTH, 1, toStartOfDay(today())) TO date_add(DAY, 1, toStartOfDay(today())) STEP INTERVAL 1 DAY
+							SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
+			Scan(&nau).
+			Error
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		pc := ""
+		wpc := ""
+		ft := ""
+		if period != 0 {
+			pc = fmt.Sprintf(" and PeriodStarted > date_sub(MONTH, %d, toStartOfMonth(today())) ", period)
+			wpc = fmt.Sprintf(" where PeriodStarted > date_sub(MONTH, %d, toStartOfMonth(today())) ", period)
+			ft = fmt.Sprintf("FROM date_sub(MONTH, %d, toStartOfMonth(today())) TO date_add(MONTH, 1, toStartOfMonth(today()))", period-1)
+		}
+
+		var err = r.db.Raw(`SELECT month_start AS PeriodStarted,
        							   uniqExactMerge(voters_count) AS ActiveUsers
 							 FROM dao_voters_count
-								WHERE dao_id = ?
+								WHERE dao_id = ?`+pc+`
 								GROUP BY dao_id, PeriodStarted
 								ORDER BY PeriodStarted
-								WITH FILL STEP INTERVAL 1 MONTH 
+								WITH FILL `+ft+` STEP INTERVAL 1 MONTH 
 								SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
-		Scan(&au).
-		Error
-	if err != nil {
-		return nil, err
-	}
+			Scan(&au).
+			Error
+		if err != nil {
+			return nil, err
+		}
 
-	err = r.db.Raw(`SELECT PeriodStarted,
+		err = r.db.Raw(`SELECT PeriodStarted,
 							   uniqExact(voter) AS ActiveUsers
 						FROM (SELECT toStartOfMonth(minMerge(start_date)) as PeriodStarted, voter from dao_voters_start_mv WHERE dao_id = ? group by dao_id, voter) dv
-						GROUP BY PeriodStarted
+						`+wpc+`GROUP BY PeriodStarted
 						ORDER BY PeriodStarted
-						WITH FILL STEP INTERVAL 1 MONTH 
+						WITH FILL `+ft+` STEP INTERVAL 1 MONTH 
 						SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
-		Scan(&nau).
-		Error
-	if err != nil {
-		return nil, err
+			Scan(&nau).
+			Error
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	res := make([]*MonthlyActiveUser, len(au))
@@ -130,19 +166,24 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID, period uint32) ([]*Pr
 		WHERE dao_id = ? and created_at >= date_sub(MONTH, 1, toStartOfDay(today()))
 		GROUP BY PeriodStarted
 		ORDER BY PeriodStarted
-		WITH FILL STEP INTERVAL 1 DAY`, id, period).
+		WITH FILL FROM date_sub(MONTH, 1, toStartOfDay(today())) TO date_add(DAY, 1, toStartOfDay(today())) STEP INTERVAL 1 DAY`, id, period).
 			Scan(&res).
 			Error
 	} else {
+		ft := ""
+		if period != 0 {
+			ft = fmt.Sprintf("FROM date_sub(MONTH, %d, toStartOfMonth(today())) TO date_add(MONTH, 1, toStartOfMonth(today()))", period-1)
+		}
+
 		err = r.db.Raw(`
 		SELECT toStartOfMonth(created_at) AS PeriodStarted,
 		       uniq(proposal_id) AS ProposalsCount,
 		       uniqIf(proposal_id, spam=true) AS SpamCount
 		FROM proposals_raw 
-		WHERE dao_id = ? and (0 = ? or dateDiff('month', PeriodStarted, toStartOfMonth(today())) < ?)
+		WHERE dao_id = ? and (0 = ? or PeriodStarted > date_sub(MONTH, ?, toStartOfMonth(today())))
 		GROUP BY PeriodStarted
 		ORDER BY PeriodStarted
-		WITH FILL STEP INTERVAL 1 MONTH`, id, period, period).
+		WITH FILL `+ft+` STEP INTERVAL 1 MONTH`, id, period, period).
 			Scan(&res).
 			Error
 	}
@@ -175,35 +216,60 @@ func (r *Repo) GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error) {
 	return res, err
 }
 
-func (r *Repo) GetTopVotersByVp(id uuid.UUID, offset int, limit int) ([]*VoterWithVp, error) {
+func (r *Repo) GetTopVotersByVp(id uuid.UUID, offset int, limit int, period uint32) ([]*VoterWithVp, error) {
 	var res []*VoterWithVp
-	err := r.db.Raw(`
+	var err error
+	if period == 0 {
+		err = r.db.Raw(`
 		select voter as Voter, avg(vp) as VpAvg, uniq(proposal_id) as VotesCount 
 			from votes_raw 
-				where dao_id = ? and 
-				      voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
+				where dao_id = ?
 		        group by voter 
 		        order by (VpAvg, VotesCount) desc limit ? offset ?
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
-    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, id, limit, offset).
-		Scan(&res).
-		Error
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, limit, offset).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`
+		select voter as Voter, avg(vp) as VpAvg, uniq(proposal_id) as VotesCount 
+			from votes_raw 
+				where dao_id = ? and created_at >= date_sub(MONTH, ?, today())
+		        group by voter 
+		        order by (VpAvg, VotesCount) desc limit ? offset ?
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, period, limit, offset).
+			Scan(&res).
+			Error
+	}
 
 	return res, err
 }
 
-func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID) (*VpAvgTotal, error) {
+func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID, period uint32) (*VpAvgTotal, error) {
 	var res *VpAvgTotal
-	err := r.db.Raw(`select sum(VpAvg) as VpAvgs, uniq(Voter) as Voters from
+	var err error
+	if period == 0 {
+		err = r.db.Raw(`select sum(VpAvg) as VpAvgs, uniq(Voter) as Voters from
                                    (select voter as Voter, avg(vp) as VpAvg
                         			from votes_raw
-                        			where dao_id = ? and
-                                		voter in (select voter from votes_raw where dao_id = ? and dateDiff('month', created_at, today()) <=6)
+                        			where dao_id = ?
                         			group by voter) 
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
-    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, id).
-		Scan(&res).
-		Error
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`select sum(VpAvg) as VpAvgs, uniq(Voter) as Voters from
+                                   (select voter as Voter, avg(vp) as VpAvg
+                        			from votes_raw
+                        			where dao_id = ? and created_at >= date_sub(MONTH, ?, today())
+                        			group by voter) 
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, period).
+			Scan(&res).
+			Error
+	}
 
 	return res, err
 }

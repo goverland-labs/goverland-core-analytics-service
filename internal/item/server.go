@@ -31,7 +31,7 @@ func (s *Server) GetMonthlyActiveUsers(_ context.Context, req *internalapi.Month
 		return nil, err
 	}
 
-	users, err := s.service.GetMonthlyActiveUsers(id)
+	users, err := s.service.GetMonthlyActiveUsers(id, req.GetPeriodInMonths())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no users for this dao ID")
 	}
@@ -134,8 +134,7 @@ func (s *Server) GetMonthlyNewProposals(_ context.Context, req *internalapi.Mont
 	if err != nil {
 		return nil, err
 	}
-	period := req.PeriodInMonths
-	proposals, err := s.service.GetMonthlyNewProposals(id, period)
+	proposals, err := s.service.GetMonthlyNewProposals(id, req.GetPeriodInMonths())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no proposals for this dao ID")
 	}
@@ -167,8 +166,8 @@ func (s *Server) GetTopVotersByVp(_ context.Context, req *internalapi.TopVotersB
 	if err != nil {
 		return nil, err
 	}
-	totals, _ := s.service.GetTotalVpAvg(id)
-	voters, err := s.service.GetTopVotersByVp(id, req.GetOffset(), req.GetLimit())
+	totals, _ := s.service.GetTotalVpAvg(id, req.GetPeriodInMonths())
+	voters, err := s.service.GetTopVotersByVp(id, req.GetOffset(), req.GetLimit(), req.GetPeriodInMonths())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no users for this dao ID")
 	}

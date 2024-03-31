@@ -21,15 +21,15 @@ type Publisher interface {
 }
 
 type DataProvider interface {
-	GetMonthlyActiveUsersByDaoId(id uuid.UUID) ([]*MonthlyActiveUser, error)
+	GetMonthlyActiveUsersByDaoId(id uuid.UUID, period uint32) ([]*MonthlyActiveUser, error)
 	GetVoterBucketsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetVotesGroupsByDaoId(id uuid.UUID) ([]*Bucket, error)
 	GetExclusiveVotersByDaoId(id uuid.UUID) (*ExclusiveVoters, error)
 	GetMonthlyNewProposalsByDaoId(id uuid.UUID, period uint32) ([]*ProposalsByMonth, error)
 	GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error)
 	GetMutualDaos(id uuid.UUID, limit uint64) ([]*DaoVoters, error)
-	GetTopVotersByVp(id uuid.UUID, limit int, offset int) ([]*VoterWithVp, error)
-	GetTotalVpAvgForActiveVoters(id uuid.UUID) (*VpAvgTotal, error)
+	GetTopVotersByVp(id uuid.UUID, limit int, offset int, period uint32) ([]*VoterWithVp, error)
+	GetTotalVpAvgForActiveVoters(id uuid.UUID, period uint32) (*VpAvgTotal, error)
 	GetVoterTotalsForPeriods(periodInDays uint32) (*VoterTotals, error)
 	GetDaoProposalTotalsForPeriods(periodInDays uint32) (*ActiveDaoProposalTotals, error)
 	GetMonthlyDaos() ([]*MonthlyTotal, error)
@@ -53,8 +53,8 @@ func NewService(p Publisher, r DataProvider) (*Service, error) {
 	}, nil
 }
 
-func (s *Service) GetMonthlyActiveUsers(id uuid.UUID) ([]*MonthlyActiveUser, error) {
-	return s.repo.GetMonthlyActiveUsersByDaoId(id)
+func (s *Service) GetMonthlyActiveUsers(id uuid.UUID, period uint32) ([]*MonthlyActiveUser, error) {
+	return s.repo.GetMonthlyActiveUsersByDaoId(id, period)
 }
 
 func (s *Service) GetVoterBuckets(id uuid.UUID) ([]*Bucket, error) {
@@ -97,12 +97,12 @@ func (s *Service) GetMutualDaos(id uuid.UUID, limit uint64) ([]*MutualDao, error
 	return res, nil
 }
 
-func (s *Service) GetTopVotersByVp(id uuid.UUID, offset uint32, limit uint32) ([]*VoterWithVp, error) {
-	return s.repo.GetTopVotersByVp(id, int(offset), int(limit))
+func (s *Service) GetTopVotersByVp(id uuid.UUID, offset uint32, limit uint32, period uint32) ([]*VoterWithVp, error) {
+	return s.repo.GetTopVotersByVp(id, int(offset), int(limit), period)
 }
 
-func (s *Service) GetTotalVpAvg(id uuid.UUID) (*VpAvgTotal, error) {
-	return s.repo.GetTotalVpAvgForActiveVoters(id)
+func (s *Service) GetTotalVpAvg(id uuid.UUID, period uint32) (*VpAvgTotal, error) {
+	return s.repo.GetTotalVpAvgForActiveVoters(id, period)
 }
 
 func (s *Service) GetTotalsForLastPeriods(period uint32) (*EcosystemTotals, error) {

@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.21] - 2024-03-31
+
+### Added
+- Month filter for user, voter endpoint
+
 ## [0.1.20] - 2024-03-27
 
 ### Added

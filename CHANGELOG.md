@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.23] - 2024-04-12
+
+### Changed
+- Bucket calculation
+
 ## [0.1.22] - 2024-03-31
 
 ### Fixed

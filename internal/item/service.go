@@ -38,6 +38,7 @@ type DataProvider interface {
 	GetDaoProposalForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetDaoVotersForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error)
+	GetGoverlandIndexAdditives() (map[uuid.UUID]float64, error)
 	GetDaos() ([]uuid.UUID, error)
 }
 
@@ -171,10 +172,15 @@ func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {
 		return err
 	}
 
+	dadditives, err := s.repo.GetGoverlandIndexAdditives()
+	if err != nil {
+		return err
+	}
+
 	for _, dao := range daos {
 		// Experimental calculation that can be updated not once
 		// Index is based on proposal, voter, votes counts.
-		index := 5*math.Log(max(dp[dao], math.E)) + math.Log2(max(dvs[dao], 1)) + 3*math.Log2(max(dv[dao], 1)) + 0.3*(math.Log2(max(dvso[dao], 1))+3*math.Log2(max(dvo[dao], 1)))
+		index := 5*math.Log(max(dp[dao], math.E)) + math.Log2(max(dvs[dao], 1)) + 3*math.Log2(max(dv[dao], 1)) + 0.3*(math.Log2(max(dvso[dao], 1))+3*math.Log2(max(dvo[dao], 1))) + dadditives[dao]
 		if err = s.events.PublishJSON(ctx, pevents.SubjectPopularityIndexUpdated,
 			pevents.DaoPayload{ID: dao, PopularityIndex: &index}); err != nil {
 			log.Error().Err(err).Msgf("publish dao event #%s", dao)

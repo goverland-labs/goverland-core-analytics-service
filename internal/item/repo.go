@@ -449,6 +449,18 @@ func (r *Repo) GetDaos() ([]uuid.UUID, error) {
 	return res, err
 }
 
+func (r *Repo) GetGoverlandIndexAdditives() (map[uuid.UUID]float64, error) {
+	var res []*TotalForDaos
+	var err error
+	err = r.db.Raw(`select dao_id as DaoID, argMax(additive, start_at) as Total 
+							from goverland_index_additive
+								where start_at<=today() and (finish_at>=today() or finish_at is null)
+								group by dao_id`).
+		Scan(&res).
+		Error
+	return convertResultToMap(res), err
+}
+
 func convertResultToMap(res []*TotalForDaos) map[uuid.UUID]float64 {
 	m := make(map[uuid.UUID]float64)
 	for _, v := range res {

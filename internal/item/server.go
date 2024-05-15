@@ -92,7 +92,7 @@ func (s *Server) GetVoterBucketsV2(_ context.Context, req *internalapi.VoterBuck
 	}
 
 	for i := groupId; i < gcount; i++ {
-		if buckets[len(buckets)-1].GroupId >= groups[i] && (i == gcount-1 || buckets[len(buckets)-1].GroupId < groups[i+1]) {
+		if len(buckets) > 0 && buckets[len(buckets)-1].GroupId >= groups[i] && (i == gcount-1 || buckets[len(buckets)-1].GroupId < groups[i+1]) {
 			res[i] = &internalapi.VoterGroup{
 				Votes:  strconv.Itoa(int(groups[i])),
 				Voters: count,

@@ -23,6 +23,7 @@ func GetAllMigrations() []*Migration {
 		NewMigration(3, Migration003InitMv),
 		NewMigration(4, Migration004InitMv),
 		NewMigration(5, Migration005AddSpamFlag),
+		NewMigration(6, Migration006AddGoverlandIndexAdditive),
 	}
 }
 

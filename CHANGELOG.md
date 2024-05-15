@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.24] - 2024-05-15
+
+### Added
+- Goverland index additives
+
 ## [0.1.23] - 2024-04-12
 
 ### Changed

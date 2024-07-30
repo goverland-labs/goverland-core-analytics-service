@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.25] - 2024-07-30
+
+### Changed
+- Sort top voters with the same vp and count by last vote's date
+
 ## [0.1.24] - 2024-05-15
 
 ### Added

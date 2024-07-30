@@ -225,7 +225,7 @@ func (r *Repo) GetTopVotersByVp(id uuid.UUID, offset int, limit int, period uint
 			from votes_raw 
 				where dao_id = ?
 		        group by voter 
-		        order by (VpAvg, VotesCount) desc limit ? offset ?
+		        order by (VpAvg, VotesCount, max(created_at)) desc limit ? offset ?
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
     						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, limit, offset).
 			Scan(&res).
@@ -236,7 +236,7 @@ func (r *Repo) GetTopVotersByVp(id uuid.UUID, offset int, limit int, period uint
 			from votes_raw 
 				where dao_id = ? and created_at >= date_sub(MONTH, ?, today())
 		        group by voter 
-		        order by (VpAvg, VotesCount) desc limit ? offset ?
+		        order by (VpAvg, VotesCount, max(created_at)) desc limit ? offset ?
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
     						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, period, limit, offset).
 			Scan(&res).

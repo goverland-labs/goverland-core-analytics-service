@@ -7,6 +7,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.26] - 2024-09-16
+
+## Added
+- Avg Vp List for dao
+
+## Changed 
+- The calculation of succeeded proposal count
+
 ## [0.1.25] - 2024-07-30
 
 ### Changed

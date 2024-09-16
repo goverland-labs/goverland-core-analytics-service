@@ -244,6 +244,21 @@ func (s *Server) GetMonthlyActive(_ context.Context, req *internalapi.MonthlyAct
 	}, nil
 }
 
+func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRequest) (*internalapi.GetAvgVpListResponse, error) {
+	id, err := getDaoUuid(req.GetDaoId())
+	if err != nil {
+		return nil, err
+	}
+	vpAvgs, err := s.service.GetVpAvgList(id)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, status.Error(codes.InvalidArgument, "no daos")
+	}
+
+	return &internalapi.GetAvgVpListResponse{
+		AvgVp: vpAvgs,
+	}, nil
+}
+
 func getDaoUuid(daoId string) (uuid.UUID, error) {
 	if daoId == "" {
 		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")

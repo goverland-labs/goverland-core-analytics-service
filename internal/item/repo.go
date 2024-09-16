@@ -193,9 +193,12 @@ func (r *Repo) GetMonthlyNewProposalsByDaoId(id uuid.UUID, period uint32) ([]*Pr
 
 func (r *Repo) GetProposalsCountByDaoId(id uuid.UUID) (*FinalProposalCounts, error) {
 	var res *FinalProposalCounts
-	err := r.db.Raw(`select uniqIf(proposal_id, state='succeeded') as Succeeded, uniq(proposal_id) as Finished
-							from proposals_raw
-								where dao_id = ? and state in ('succeeded', 'failed', 'defeated')`, id).
+	err := r.db.Raw(`select countIf(status='succeeded') as Succeeded, count() as Finished 
+							from (
+								select argMax(state, created_at) as status
+								from proposals_raw
+								where dao_id = ? and state in ('succeeded', 'failed', 'defeated')
+								group by proposal_id)`, id).
 		Scan(&res).
 		Error
 	return res, err
@@ -271,6 +274,18 @@ func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID, period uint32) (*VpAvg
 			Error
 	}
 
+	return res, err
+}
+
+func (r *Repo) GetVpAvgList(id uuid.UUID) ([]float32, error) {
+	var res []float32
+	err := r.db.Raw(`select avg(vp) as VpAvg
+							from votes_raw
+							where dao_id = ?
+							group by voter 
+							SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200 `, id).
+		Scan(&res).
+		Error
 	return res, err
 }
 

@@ -40,6 +40,7 @@ type DataProvider interface {
 	GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetGoverlandIndexAdditives() (map[uuid.UUID]float64, error)
 	GetDaos() ([]uuid.UUID, error)
+	GetVpAvgList(id uuid.UUID) ([]float32, error)
 }
 
 type Service struct {
@@ -104,6 +105,10 @@ func (s *Service) GetTopVotersByVp(id uuid.UUID, offset uint32, limit uint32, pe
 
 func (s *Service) GetTotalVpAvg(id uuid.UUID, period uint32) (*VpAvgTotal, error) {
 	return s.repo.GetTotalVpAvgForActiveVoters(id, period)
+}
+
+func (s *Service) GetVpAvgList(id uuid.UUID) ([]float32, error) {
+	return s.repo.GetVpAvgList(id)
 }
 
 func (s *Service) GetTotalsForLastPeriods(period uint32) (*EcosystemTotals, error) {

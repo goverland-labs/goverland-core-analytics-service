@@ -277,15 +277,29 @@ func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID, period uint32) (*VpAvg
 	return res, err
 }
 
-func (r *Repo) GetVpAvgList(id uuid.UUID) ([]float32, error) {
+func (r *Repo) GetVpAvgList(id uuid.UUID, period uint32) ([]float32, error) {
 	var res []float32
-	err := r.db.Raw(`select avg(vp) as VpAvg
+	var err error
+	if period == 0 {
+		err = r.db.Raw(`
+							select avg(vp) as VpAvg
 							from votes_raw
 							where dao_id = ?
-							group by voter 
-							SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200 `, id).
-		Scan(&res).
-		Error
+							group by voter
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
+			Scan(&res).
+			Error
+	} else {
+		err = r.db.Raw(`
+		select avg(vp) as VpAvg
+			from votes_raw 
+				where dao_id = ? and created_at >= date_sub(MONTH, ?, today())
+		        group by voter
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, period).
+			Scan(&res).
+			Error
+	}
 	return res, err
 }
 

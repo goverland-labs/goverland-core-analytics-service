@@ -249,7 +249,7 @@ func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRe
 	if err != nil {
 		return nil, err
 	}
-	vpAvgs, err := s.service.GetVpAvgList(id)
+	vpAvgs, err := s.service.GetVpAvgList(id, req.GetPeriodInMonths())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, status.Error(codes.InvalidArgument, "no daos")
 	}

@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.27] - 2024-09-17
+
+## Added
+- Period filter for Avg Vp List
+
 ## [0.1.26] - 2024-09-16
 
 ## Added

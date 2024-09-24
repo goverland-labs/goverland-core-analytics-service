@@ -277,26 +277,26 @@ func (r *Repo) GetTotalVpAvgForActiveVoters(id uuid.UUID, period uint32) (*VpAvg
 	return res, err
 }
 
-func (r *Repo) GetVpAvgList(id uuid.UUID, period uint32) ([]float32, error) {
+func (r *Repo) GetVpAvgList(id uuid.UUID, period uint32, price float32) ([]float32, error) {
 	var res []float32
 	var err error
 	if period == 0 {
 		err = r.db.Raw(`
-							select avg(vp) as VpAvg
+							select avg(vp) * ? as VpAvg
 							from votes_raw
 							where dao_id = ?
-							group by voter
-		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, id).
+							group by voter order by VpAvg
+		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200`, price, id).
 			Scan(&res).
 			Error
 	} else {
 		err = r.db.Raw(`
-		select avg(vp) as VpAvg
+		select avg(vp) * ? as VpAvg
 			from votes_raw 
 				where dao_id = ? and created_at >= date_sub(MONTH, ?, today())
-		        group by voter
+		        group by voter order by VpAvg
 		        SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
-    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, id, period).
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, price, id, period).
 			Scan(&res).
 			Error
 	}
@@ -488,6 +488,17 @@ func (r *Repo) GetGoverlandIndexAdditives() (map[uuid.UUID]float64, error) {
 		Scan(&res).
 		Error
 	return convertResultToMap(res), err
+}
+
+func (r *Repo) GetTokenPrice(id uuid.UUID) (float32, error) {
+	var res float32
+	var err error
+	err = r.db.Raw(`select argMax(price, created_day) 
+							from token_price
+								where dao_id = ?`, id).
+		Scan(&res).
+		Error
+	return res, err
 }
 
 func convertResultToMap(res []*TotalForDaos) map[uuid.UUID]float64 {

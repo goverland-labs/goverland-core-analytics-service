@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"slices"
 
 	pevents "github.com/goverland-labs/goverland-platform-events/events/core"
 	"github.com/rs/zerolog/log"
@@ -40,7 +41,8 @@ type DataProvider interface {
 	GetDaoVotesForPeriod(period uint8) (map[uuid.UUID]float64, error)
 	GetGoverlandIndexAdditives() (map[uuid.UUID]float64, error)
 	GetDaos() ([]uuid.UUID, error)
-	GetVpAvgList(id uuid.UUID, period uint32) ([]float32, error)
+	GetVpAvgList(id uuid.UUID, period uint32, price float32) ([]float32, error)
+	GetTokenPrice(id uuid.UUID) (float32, error)
 }
 
 type Service struct {
@@ -107,8 +109,45 @@ func (s *Service) GetTotalVpAvg(id uuid.UUID, period uint32) (*VpAvgTotal, error
 	return s.repo.GetTotalVpAvgForActiveVoters(id, period)
 }
 
-func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) ([]float32, error) {
-	return s.repo.GetVpAvgList(id, period)
+func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error) {
+	price, err := s.repo.GetTokenPrice(id)
+	if err != nil || price <= 0 {
+		return nil, err
+	}
+	list, _ := s.repo.GetVpAvgList(id, period, price)
+
+	vps := slices.DeleteFunc(list, func(v float32) bool {
+		return v < 1
+	})
+	minValue := math.Log2(float64(vps[0]))
+	numberBins := int(math.Floor(math.Log2(float64(vps[len(vps)-1]))-minValue) + 1)
+	bins := make([]Bin, numberBins)
+	inputIndex := 0
+	for i := 0; i < numberBins; i++ {
+		ub := math.Floor(math.Pow(2, minValue+float64(i+1)))
+		binCount := 0
+		for j := inputIndex; j < len(vps); j++ {
+			if float64(vps[j]) < ub {
+				binCount++
+			} else {
+				bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount)}
+				inputIndex = j
+				binCount = 0
+				break
+			}
+		}
+		if binCount != 0 {
+			bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount)}
+		}
+
+	}
+
+	return &VpHistogram{
+		VpValue:      price,
+		VotersTotal:  uint32(len(list)),
+		VotersCutted: uint32(len(list)) - uint32(len(vps)),
+		Bins:         bins,
+	}, nil
 }
 
 func (s *Service) GetTotalsForLastPeriods(period uint32) (*EcosystemTotals, error) {

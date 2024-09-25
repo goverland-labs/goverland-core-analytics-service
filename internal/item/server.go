@@ -249,13 +249,16 @@ func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRe
 	if err != nil {
 		return nil, err
 	}
-	vpAvgs, err := s.service.GetVpAvgList(id, req.GetPeriodInMonths())
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, status.Error(codes.InvalidArgument, "no daos")
+	vph, err := s.service.GetVpAvgList(id, req.GetPeriodInMonths())
+	if err != nil || vph == nil {
+		return &internalapi.GetAvgVpListResponse{}, err
 	}
 
 	return &internalapi.GetAvgVpListResponse{
-		AvgVp: vpAvgs,
+		VpValue:      vph.VpValue,
+		VotersTotal:  vph.VotersTotal,
+		VotersCutted: vph.VotersCutted,
+		Bins:         convertBinsToAPI(vph.Bins),
 	}, nil
 }
 
@@ -342,6 +345,18 @@ func convertMonthlyTotalsToAPI(mt []*MonthlyTotal) []*internalapi.TotalsByMonth 
 			PeriodStarted:   timestamppb.New(t.PeriodStarted),
 			Total:           t.Total,
 			NewObjectsTotal: t.TotalOfNew,
+		}
+	}
+
+	return res
+}
+
+func convertBinsToAPI(bins []Bin) []*internalapi.Bin {
+	res := make([]*internalapi.Bin, len(bins))
+	for i, t := range bins {
+		res[i] = &internalapi.Bin{
+			UpperBound: t.UpperBound,
+			Count:      t.Count,
 		}
 	}
 

@@ -153,6 +153,18 @@ type VpAvgTotal struct {
 	Voters uint64
 }
 
+type VpHistogram struct {
+	VpValue      float32
+	VotersTotal  uint32
+	VotersCutted uint32
+	Bins         []Bin
+}
+
+type Bin struct {
+	UpperBound float32
+	Count      uint32
+}
+
 type Strategies []Strategy
 
 type Categories []string

@@ -3,14 +3,12 @@ package item
 import (
 	"context"
 	"errors"
-	"math"
-	"slices"
-
 	pevents "github.com/goverland-labs/goverland-platform-events/events/core"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+	"math"
 
 	"github.com/google/uuid"
 )
@@ -115,10 +113,17 @@ func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error
 		return nil, err
 	}
 	list, _ := s.repo.GetVpAvgList(id, period, price)
-
-	vps := slices.DeleteFunc(list, func(v float32) bool {
-		return v < 1
-	})
+	var avpTotal float32 = 0
+	voterCutted := 0
+	for _, vp := range list {
+		if vp < 1 {
+			voterCutted++
+			avpTotal += vp
+		} else {
+			break
+		}
+	}
+	vps := list[voterCutted:]
 	minValue := math.Log2(float64(vps[0]))
 	numberBins := int(math.Floor(math.Log2(float64(vps[len(vps)-1]))-minValue) + 1)
 	bins := make([]Bin, numberBins)
@@ -126,18 +131,23 @@ func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error
 	for i := 0; i < numberBins; i++ {
 		ub := math.Floor(math.Pow(2, minValue+float64(i+1)))
 		binCount := 0
+		var binAvpTotal float32 = 0
 		for j := inputIndex; j < len(vps); j++ {
 			if float64(vps[j]) < ub {
 				binCount++
+				binAvpTotal += vps[j]
 			} else {
-				bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount)}
+				bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount), TotalAvp: binAvpTotal}
+				avpTotal += binAvpTotal
 				inputIndex = j
 				binCount = 0
+				binAvpTotal = 0
 				break
 			}
 		}
 		if binCount != 0 {
-			bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount)}
+			bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount), TotalAvp: binAvpTotal}
+			avpTotal += binAvpTotal
 		}
 
 	}
@@ -145,7 +155,8 @@ func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error
 	return &VpHistogram{
 		VpValue:      price,
 		VotersTotal:  uint32(len(list)),
-		VotersCutted: uint32(len(list)) - uint32(len(vps)),
+		VotersCutted: uint32(voterCutted),
+		AvpTotal:     avpTotal,
 		Bins:         bins,
 	}, nil
 }

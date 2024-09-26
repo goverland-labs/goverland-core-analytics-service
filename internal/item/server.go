@@ -258,6 +258,7 @@ func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRe
 		VpValue:      vph.VpValue,
 		VotersTotal:  vph.VotersTotal,
 		VotersCutted: vph.VotersCutted,
+		AvpTotal:     vph.AvpTotal,
 		Bins:         convertBinsToAPI(vph.Bins),
 	}, nil
 }
@@ -357,6 +358,7 @@ func convertBinsToAPI(bins []Bin) []*internalapi.Bin {
 		res[i] = &internalapi.Bin{
 			UpperBound: t.UpperBound,
 			Count:      t.Count,
+			TotalAvp:   t.TotalAvp,
 		}
 	}
 

@@ -157,12 +157,14 @@ type VpHistogram struct {
 	VpValue      float32
 	VotersTotal  uint32
 	VotersCutted uint32
+	AvpTotal     float32
 	Bins         []Bin
 }
 
 type Bin struct {
 	UpperBound float32
 	Count      uint32
+	TotalAvp   float32
 }
 
 type Strategies []Strategy

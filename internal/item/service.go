@@ -107,7 +107,7 @@ func (s *Service) GetTotalVpAvg(id uuid.UUID, period uint32) (*VpAvgTotal, error
 	return s.repo.GetTotalVpAvgForActiveVoters(id, period)
 }
 
-func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error) {
+func (s *Service) GetVpAvgList(id uuid.UUID, period uint32, minBalance float32) (*VpHistogram, error) {
 	price, err := s.repo.GetTokenPrice(id)
 	if err != nil || price <= 0 {
 		return nil, err
@@ -116,48 +116,61 @@ func (s *Service) GetVpAvgList(id uuid.UUID, period uint32) (*VpHistogram, error
 	var avpTotal float32 = 0
 	voterCutted := 0
 	for _, vp := range list {
-		if vp < 1 {
+		if vp < minBalance {
 			voterCutted++
 			avpTotal += vp
 		} else {
 			break
 		}
 	}
+	avpTotalCutted := avpTotal
+
 	vps := list[voterCutted:]
-	minValue := math.Log2(float64(vps[0]))
-	numberBins := int(math.Floor(math.Log2(float64(vps[len(vps)-1]))-minValue) + 1)
-	bins := make([]Bin, numberBins)
-	inputIndex := 0
-	for i := 0; i < numberBins; i++ {
-		ub := math.Floor(math.Pow(2, minValue+float64(i+1)))
-		binCount := 0
-		var binAvpTotal float32 = 0
-		for j := inputIndex; j < len(vps); j++ {
-			if float64(vps[j]) < ub {
-				binCount++
-				binAvpTotal += vps[j]
-			} else {
+	bins := make([]Bin, 0)
+	if len(vps) > 0 {
+		var minValue float64 = 0
+		if vps[0] > 1 {
+			minValue = math.Log2(float64(vps[0]))
+		}
+		var maxValue float64 = 0
+		if vps[len(vps)-1] > 1 {
+			maxValue = math.Log2(float64(vps[len(vps)-1]))
+		}
+		numberBins := int(math.Floor(maxValue-minValue) + 1)
+		bins = make([]Bin, numberBins)
+		inputIndex := 0
+		for i := 0; i < numberBins; i++ {
+			ub := math.Floor(math.Pow(2, minValue+float64(i+1)))
+			binCount := 0
+			var binAvpTotal float32 = 0
+			for j := inputIndex; j < len(vps); j++ {
+				if float64(vps[j]) < ub {
+					binCount++
+					binAvpTotal += vps[j]
+				} else {
+					bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount), TotalAvp: binAvpTotal}
+					avpTotal += binAvpTotal
+					inputIndex = j
+					binCount = 0
+					binAvpTotal = 0
+					break
+				}
+			}
+			if binCount != 0 {
 				bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount), TotalAvp: binAvpTotal}
 				avpTotal += binAvpTotal
-				inputIndex = j
-				binCount = 0
-				binAvpTotal = 0
-				break
 			}
-		}
-		if binCount != 0 {
-			bins[i] = Bin{UpperBound: float32(ub), Count: uint32(binCount), TotalAvp: binAvpTotal}
-			avpTotal += binAvpTotal
-		}
 
+		}
 	}
 
 	return &VpHistogram{
-		VpValue:      price,
-		VotersTotal:  uint32(len(list)),
-		VotersCutted: uint32(voterCutted),
-		AvpTotal:     avpTotal,
-		Bins:         bins,
+		VpValue:        price,
+		VotersTotal:    uint32(len(list)),
+		VotersCutted:   uint32(voterCutted),
+		AvpTotal:       avpTotal,
+		AvpTotalCutted: avpTotalCutted,
+		Bins:           bins,
 	}, nil
 }
 

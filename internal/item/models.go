@@ -154,11 +154,12 @@ type VpAvgTotal struct {
 }
 
 type VpHistogram struct {
-	VpValue      float32
-	VotersTotal  uint32
-	VotersCutted uint32
-	AvpTotal     float32
-	Bins         []Bin
+	VpValue        float32
+	VotersTotal    uint32
+	VotersCutted   uint32
+	AvpTotal       float32
+	AvpTotalCutted float32
+	Bins           []Bin
 }
 
 type Bin struct {

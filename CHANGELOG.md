@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.30] - 2024-09-27
+
+## Added
+- Min balance for Histogram
+
 ## [0.1.29] - 2024-09-26
 
 ## Added

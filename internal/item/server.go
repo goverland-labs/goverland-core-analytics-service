@@ -249,17 +249,18 @@ func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRe
 	if err != nil {
 		return nil, err
 	}
-	vph, err := s.service.GetVpAvgList(id, req.GetPeriodInMonths())
+	vph, err := s.service.GetVpAvgList(id, req.GetPeriodInMonths(), req.GetMinBalance())
 	if err != nil || vph == nil {
 		return &internalapi.GetAvgVpListResponse{}, err
 	}
 
 	return &internalapi.GetAvgVpListResponse{
-		VpValue:      vph.VpValue,
-		VotersTotal:  vph.VotersTotal,
-		VotersCutted: vph.VotersCutted,
-		AvpTotal:     vph.AvpTotal,
-		Bins:         convertBinsToAPI(vph.Bins),
+		VpValue:        vph.VpValue,
+		VotersTotal:    vph.VotersTotal,
+		VotersCutted:   vph.VotersCutted,
+		AvpTotal:       vph.AvpTotal,
+		AvpTotalCutted: vph.AvpTotalCutted,
+		Bins:           convertBinsToAPI(vph.Bins),
 	}, nil
 }
 

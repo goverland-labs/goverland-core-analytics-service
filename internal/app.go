@@ -26,6 +26,7 @@ import (
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/migration"
 	"github.com/goverland-labs/analytics-service/internal/proposal"
+	"github.com/goverland-labs/analytics-service/internal/token"
 	"github.com/goverland-labs/analytics-service/internal/vote"
 	"github.com/goverland-labs/analytics-service/pkg/health"
 	"github.com/goverland-labs/analytics-service/pkg/prometheus"
@@ -41,6 +42,7 @@ type Application struct {
 	repo             *item.Repo
 	service          *item.Service
 	clickhouseConn   *sql.DB
+	tokensStorage    *storage.ClickhouseWorker[*core.TokenPricePayload]
 	votesStorage     *storage.ClickhouseWorker[*core.VotePayload]
 	proposalsStorage *storage.ClickhouseWorker[proposal.Payload]
 	daosStorage      *storage.ClickhouseWorker[dao.Payload]
@@ -80,11 +82,13 @@ func (a *Application) bootstrap() error {
 		a.initDaosStorageWorker,
 		a.initProposalsStorageWorker,
 		a.initVotesStorageWorker,
+		a.initTokensStorageWorker,
 
 		// Init Workers: Consumers
 		a.initDaosConsumerWorker,
 		a.initProposalsConsumerWorker,
 		a.initVotesConsumerWorker,
+		a.initTokensConsumerWorker,
 
 		// Init Workers: Application
 		a.initGRPCWorker,
@@ -232,6 +236,25 @@ func (a *Application) initVotesConsumerWorker() error {
 
 	worker := vote.NewConsumer(conn, a.votesStorage)
 	a.manager.AddWorker(process.NewCallbackWorker("votes consumer", worker.Start))
+
+	return nil
+}
+
+func (a *Application) initTokensStorageWorker() error {
+	a.tokensStorage = storage.NewClickhouseWorker[*core.TokenPricePayload]("tokens", a.clickhouseConn, token.ClickhouseAdapter{}, 50000, 5*time.Minute)
+	a.manager.AddWorker(process.NewCallbackWorker("tokens ch storage", a.tokensStorage.Start))
+
+	return nil
+}
+
+func (a *Application) initTokensConsumerWorker() error {
+	conn, err := a.createNatsConnection()
+	if err != nil {
+		return err
+	}
+
+	worker := token.NewConsumer(conn, a.tokensStorage)
+	a.manager.AddWorker(process.NewCallbackWorker("tokens consumer", worker.Start))
 
 	return nil
 }

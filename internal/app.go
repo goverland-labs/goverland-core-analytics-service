@@ -241,7 +241,7 @@ func (a *Application) initVotesConsumerWorker() error {
 }
 
 func (a *Application) initTokensStorageWorker() error {
-	a.tokensStorage = storage.NewClickhouseWorker[*core.TokenPricePayload]("tokens", a.clickhouseConn, token.ClickhouseAdapter{}, 50000, 5*time.Minute)
+	a.tokensStorage = storage.NewClickhouseWorker[*core.TokenPricePayload]("tokens", a.clickhouseConn, token.ClickhouseAdapter{}, 500, 5*time.Minute)
 	a.manager.AddWorker(process.NewCallbackWorker("tokens ch storage", a.tokensStorage.Start))
 
 	return nil

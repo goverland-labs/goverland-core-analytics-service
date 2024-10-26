@@ -17,7 +17,7 @@ func (c ClickhouseAdapter) Values(v *core.TokenPricePayload) []any {
 	return []any{
 		v.DaoID,
 		time.Now(),
-		v.Price,
+		float32(v.Price),
 	}
 }
 

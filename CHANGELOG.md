@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.31] - 2024-10-25
+
+## Added
+- Token Price update
+
 ## [0.1.30] - 2024-09-27
 
 ## Added

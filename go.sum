@@ -532,8 +532,8 @@ github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/ad
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/goverland-labs/analytics-api v0.0.20 h1:nOOoeBIqRrMNpf+8Mev51+X5fQRk0fckzjj42Bf3TGY=
 github.com/goverland-labs/analytics-api v0.0.20/go.mod h1:apaKjFY2A5PTQyPITUN3iiswXrOQ4msiYneodpZFgBc=
-github.com/goverland-labs/goverland-platform-events v0.2.1 h1:gqy5VTMxPkd46ct1NBuRAP9lOWsRMG5q3oAtK5i8Xaw=
-github.com/goverland-labs/goverland-platform-events v0.2.1/go.mod h1:0/131HTR3cue1cDBVIoJ/iwgA+8f5MDQC8mUiqnouzE=
+github.com/goverland-labs/goverland-platform-events v0.3.7 h1:CZJ1TGwayrc2cx05TOWLuvqmCtYul5MRNJUzf16cPuQ=
+github.com/goverland-labs/goverland-platform-events v0.3.7/go.mod h1:0/131HTR3cue1cDBVIoJ/iwgA+8f5MDQC8mUiqnouzE=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=

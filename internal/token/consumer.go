@@ -3,7 +3,6 @@ package token
 import (
 	"context"
 	"fmt"
-	"time"
 
 	pevents "github.com/goverland-labs/goverland-platform-events/events/core"
 	client "github.com/goverland-labs/goverland-platform-events/pkg/natsclient"
@@ -11,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/goverland-labs/analytics-service/internal/config"
-	"github.com/goverland-labs/analytics-service/internal/metrics"
 	"github.com/goverland-labs/analytics-service/pkg/helpers"
 )
 
@@ -44,11 +42,6 @@ func NewConsumer(nc *nats.Conn, st storage) *Consumer {
 func (c *Consumer) handler() pevents.TokenPricesHandler {
 	return func(payload pevents.TokenPricesPayload) error {
 		var err error
-		defer func(start time.Time) {
-			metricHandleHistogram.
-				WithLabelValues("handle_tokens", metrics.ErrLabelValue(err)).
-				Observe(time.Since(start).Seconds())
-		}(time.Now())
 
 		for _, t := range payload {
 			err = c.storage.Store(t.DaoID.ID(), helpers.Ptr(t))

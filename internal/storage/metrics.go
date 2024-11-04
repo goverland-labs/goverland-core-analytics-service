@@ -4,7 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/goverland-labs/analytics-service/internal/metrics"
+	"github.com/goverland-labs/goverland-core-analytics-service/internal/metrics"
 )
 
 const subsystem = "ch_storage"

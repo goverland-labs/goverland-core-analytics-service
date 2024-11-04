@@ -10,9 +10,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
-	"github.com/goverland-labs/analytics-service/internal/config"
-	"github.com/goverland-labs/analytics-service/internal/metrics"
-	"github.com/goverland-labs/analytics-service/pkg/helpers"
+	"github.com/goverland-labs/goverland-core-analytics-service/internal/config"
+	"github.com/goverland-labs/goverland-core-analytics-service/internal/metrics"
+	"github.com/goverland-labs/goverland-core-analytics-service/pkg/helpers"
 )
 
 const groupName = "proposal"

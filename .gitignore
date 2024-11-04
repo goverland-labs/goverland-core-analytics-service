@@ -2,5 +2,5 @@
 .DS_Store
 /.env
 /bin/*
-/analytics-service
-/analytics-service.*
+/goverland-core-analytics-service
+/goverland-core-analytics-service.*

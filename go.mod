@@ -1,4 +1,4 @@
-module github.com/goverland-labs/analytics-service
+module github.com/goverland-labs/goverland-core-analytics-service
 
 go 1.23
 

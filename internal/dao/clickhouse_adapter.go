@@ -5,7 +5,7 @@ import (
 
 	"github.com/goverland-labs/goverland-platform-events/events/core"
 
-	"github.com/goverland-labs/analytics-service/pkg/helpers"
+	"github.com/goverland-labs/goverland-core-analytics-service/pkg/helpers"
 )
 
 type Payload struct {

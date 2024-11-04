@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/google/uuid"
-	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
+	"github.com/goverland-labs/goverland-analytics-api-protocol/protobuf/internalapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"strconv"
 )
 
 type Server struct {

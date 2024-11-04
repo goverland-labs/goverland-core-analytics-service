@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/goverland-labs/analytics-api/protobuf/internalapi"
+	"github.com/goverland-labs/goverland-analytics-api-protocol/protobuf/internalapi"
 	"github.com/goverland-labs/goverland-platform-events/events/core"
 	"github.com/goverland-labs/goverland-platform-events/pkg/natsclient"
 	"github.com/nats-io/nats.go"
@@ -17,18 +17,17 @@ import (
 	gormCh "gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
 
-	"github.com/goverland-labs/analytics-service/internal/dao"
-	"github.com/goverland-labs/analytics-service/internal/storage"
-	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
-	"github.com/goverland-labs/analytics-service/pkg/pprofhandler"
-
 	"github.com/goverland-labs/analytics-service/internal/config"
+	"github.com/goverland-labs/analytics-service/internal/dao"
 	"github.com/goverland-labs/analytics-service/internal/item"
 	"github.com/goverland-labs/analytics-service/internal/migration"
 	"github.com/goverland-labs/analytics-service/internal/proposal"
+	"github.com/goverland-labs/analytics-service/internal/storage"
 	"github.com/goverland-labs/analytics-service/internal/token"
 	"github.com/goverland-labs/analytics-service/internal/vote"
+	"github.com/goverland-labs/analytics-service/pkg/grpcsrv"
 	"github.com/goverland-labs/analytics-service/pkg/health"
+	"github.com/goverland-labs/analytics-service/pkg/pprofhandler"
 	"github.com/goverland-labs/analytics-service/pkg/prometheus"
 )
 

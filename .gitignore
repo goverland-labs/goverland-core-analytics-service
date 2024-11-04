@@ -3,3 +3,4 @@
 /.env
 /bin/*
 /analytics-service
+/analytics-service.*

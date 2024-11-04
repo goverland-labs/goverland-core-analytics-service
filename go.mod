@@ -1,13 +1,13 @@
 module github.com/goverland-labs/analytics-service
 
-go 1.21.1
+go 1.23
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.13.2
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
-	github.com/goverland-labs/analytics-api v0.0.20
+	github.com/goverland-labs/goverland-analytics-api-protocol v0.1.0
 	github.com/goverland-labs/goverland-platform-events v0.3.7
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

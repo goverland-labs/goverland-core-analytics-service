@@ -22,6 +22,14 @@ var BucketMinVotes = map[uint32]string{
 	6: "13+",
 }
 
+var Intervals = map[string]uint8{
+	"1Y": 12,
+	"6M": 6,
+	"3M": 3,
+	"1M": 1,
+	"1W": 0,
+}
+
 type AnalyticsItem struct {
 	DaoID          uuid.UUID                `json:"dao_id"`
 	EventType      EventType                `json:"event_type"`
@@ -166,6 +174,17 @@ type Bin struct {
 	UpperBound float32
 	Count      uint32
 	TotalAvp   float32
+}
+
+type TopDao struct {
+	Index            uint32
+	DaoID            uuid.UUID
+	Voters           uint64
+	Proposals        uint32
+	AvpToken         float32
+	AvpUsd           float32
+	TokenPrice       float32
+	TokenPriceChange float32
 }
 
 type Strategies []Strategy

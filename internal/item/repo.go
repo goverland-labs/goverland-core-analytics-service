@@ -501,6 +501,39 @@ func (r *Repo) GetTokenPrice(id uuid.UUID) (float32, error) {
 	return res, err
 }
 
+func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) ([]*TopDao, error) {
+	var res []*TopDao
+	i, ok := Intervals[interval]
+	if !ok {
+		i = 1
+	}
+	err := r.db.Raw(`with tokens as (
+    						select dao_id, max(created_at) as period_end, argMax(price, created_at) as current_price, 
+								   min(created_day) as period_start, argMin(price, created_at) as period_start_price
+    						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now()))  
+							group by dao_id
+							),
+     						  proposals as (
+         					select p.dao_id, proposal_id, argMax(scores_total, event_time) as vp, argMax(votes, event_time) as voters  
+							from proposals_raw p where
+								 p.dao_id in (select distinct t.dao_id from tokens t where period_end >= date_sub(DAY, 1, now())) and
+								 toDateTime("end") <= today() and toDateTime("end") >= multiIf(?=0, date_sub(WEEK, 1, today()), date_sub(MONTH, ?, today()))  
+							group by p.dao_id, proposal_id
+     						)
+						select rowNumberInAllBlocks() + 1 as Index, p.dao_id as DaoID, sum(p.voters) as Voters, uniq(p.proposal_id) as Proposals,
+							   sum(p.vp)/Proposals as AvpToken, max(t.current_price) * AvpToken as AvpUsd, max(t.current_price) as TokenPrice,
+							   multiIf(max(t.period_start_price) = 0, 0, (TokenPrice - max(t.period_start_price)) / max(t.period_start_price)) as TokenPriceChange
+						from proposals p
+						inner join tokens t on t.dao_id = p.dao_id
+						group by p.dao_id order by AvpUsd desc
+						SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, pricePeriod, pricePeriod, i, i).
+		Scan(&res).
+		Error
+
+	return res, err
+}
+
 func convertResultToMap(res []*TotalForDaos) map[uuid.UUID]float64 {
 	m := make(map[uuid.UUID]float64)
 	for _, v := range res {

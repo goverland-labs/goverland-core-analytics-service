@@ -265,6 +265,17 @@ func (s *Server) GetAvgVpList(_ context.Context, req *internalapi.GetAvgVpListRe
 	}, nil
 }
 
+func (s *Server) GetTopDaos(_ context.Context, req *internalapi.GetTopDaosRequest) (*internalapi.GetTopDaosResponse, error) {
+	td, err := s.service.GetTopDaos(req.GetCategory(), req.GetInterval(), req.GetPrice())
+	if err != nil || td == nil {
+		return &internalapi.GetTopDaosResponse{}, err
+	}
+
+	return &internalapi.GetTopDaosResponse{
+		TopDao: convertTopDaosToAPI(td),
+	}, nil
+}
+
 func getDaoUuid(daoId string) (uuid.UUID, error) {
 	if daoId == "" {
 		return uuid.UUID{}, status.Error(codes.InvalidArgument, "invalid dao ID")
@@ -361,6 +372,24 @@ func convertBinsToAPI(bins []Bin) []*internalapi.Bin {
 			UpperBound: t.UpperBound,
 			Count:      t.Count,
 			TotalAvp:   t.TotalAvp,
+		}
+	}
+
+	return res
+}
+
+func convertTopDaosToAPI(td []*TopDao) []*internalapi.TopDao {
+	res := make([]*internalapi.TopDao, len(td))
+	for i, d := range td {
+		res[i] = &internalapi.TopDao{
+			Index:            d.Index,
+			DaoId:            d.DaoID.String(),
+			Voters:           d.Voters,
+			Proposals:        d.Proposals,
+			AvpToken:         d.AvpToken,
+			AvpUsd:           d.AvpUsd,
+			TokenPrice:       d.TokenPrice,
+			TokenPriceChange: d.TokenPriceChange,
 		}
 	}
 

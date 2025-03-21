@@ -41,6 +41,7 @@ type DataProvider interface {
 	GetDaos() ([]uuid.UUID, error)
 	GetVpAvgList(id uuid.UUID, period uint32, price float32) ([]float32, error)
 	GetTokenPrice(id uuid.UUID) (float32, error)
+	GetTopDaos(category string, interval string, pricePeriod string) ([]*TopDao, error)
 }
 
 type Service struct {
@@ -207,6 +208,10 @@ func (s *Service) GetMonthlyProposals() ([]*MonthlyTotal, error) {
 
 func (s *Service) GetMonthlyVoters() ([]*MonthlyTotal, error) {
 	return s.repo.GetMonthlyVoters()
+}
+
+func (s *Service) GetTopDaos(category string, interval string, pricePeriod string) ([]*TopDao, error) {
+	return s.repo.GetTopDaos(category, interval, pricePeriod)
 }
 
 func (s *Service) processPopularityIndexCalculation(ctx context.Context) error {

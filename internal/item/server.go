@@ -389,7 +389,7 @@ func convertTopDaosToAPI(td []*TopDao) []*internalapi.TopDao {
 			AvpToken:         d.AvpToken,
 			AvpUsd:           d.AvpUsd,
 			TokenPrice:       d.TokenPrice,
-			TokenPriceChange: d.TokenPriceChange,
+			TokenPriceChange: 100.0 * d.TokenPriceChange,
 		}
 	}
 

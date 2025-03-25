@@ -510,7 +510,8 @@ func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) 
 	err := r.db.Raw(`with tokens as (
     						select dao_id, max(created_at) as period_end, argMax(price, created_at) as current_price, 
 								   min(created_day) as period_start, argMin(price, created_at) as period_start_price
-    						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now()))  
+    						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now())) 
+							and multiIf('new'=?, dao_id in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())), true)
 							group by dao_id
 							),
      						  proposals as (
@@ -527,7 +528,7 @@ func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) 
 						inner join tokens t on t.dao_id = p.dao_id
 						group by p.dao_id order by AvpUsd desc
 						SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
-    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, pricePeriod, pricePeriod, i, i).
+    						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, pricePeriod, pricePeriod, category, i, i).
 		Scan(&res).
 		Error
 

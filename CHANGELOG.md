@@ -7,6 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-03-29
+
+### Added
+- Whitelist daos
+
+### Changed
+- Exclude spam and cancelled proposals from dao top calculation
+- Split top and new top
+
 ## [0.2.2] - 2025-03-25
 
 ### Added

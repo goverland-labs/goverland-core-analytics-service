@@ -510,12 +510,15 @@ func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) 
 	err := r.db.Raw(`with tokens as (
     						select dao_id, max(created_at) as period_end, argMax(price, created_at) as current_price, 
 								   min(created_day) as period_start, argMin(price, created_at) as period_start_price
-    						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now())) 
-							and multiIf('new'=?, dao_id in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())), true)
+    						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now()))
+							and dao_id in (select dao_id from whitelist where feature_type='TOP' and disabled=false) 
+							and multiIf('new'=?, dao_id in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())), 
+												 dao_id not in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())))
 							group by dao_id
 							),
      						  proposals as (
-         					select p.dao_id, proposal_id, argMax(scores_total, event_time) as vp, argMax(votes, event_time) as voters  
+         					select p.dao_id, proposal_id, argMax(scores_total, event_time) as vp, argMax(votes, event_time) as voters,
+							argMax(spam, event_time) as spam, argMax(state, event_time) as state
 							from proposals_raw p where
 								 p.dao_id in (select distinct t.dao_id from tokens t where period_end >= date_sub(DAY, 1, now())) and
 								 toDateTime("end") <= today() and toDateTime("end") >= multiIf(?=0, date_sub(WEEK, 1, today()), date_sub(MONTH, ?, today()))  
@@ -524,8 +527,9 @@ func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) 
 						select rowNumberInAllBlocks() + 1 as Index, p.dao_id as DaoID, sum(p.voters) as Voters, uniq(p.proposal_id) as Proposals,
 							   sum(p.vp)/Proposals as AvpToken, max(t.current_price) * AvpToken as AvpUsd, max(t.current_price) as TokenPrice,
 							   multiIf(max(t.period_start_price) = 0, 0, (TokenPrice - max(t.period_start_price)) / max(t.period_start_price)) as TokenPriceChange
-						from proposals p
+						from proposals p 
 						inner join tokens t on t.dao_id = p.dao_id
+						where p.spam != true and p.state != 'canceled'
 						group by p.dao_id order by AvpUsd desc
 						SETTINGS use_query_cache = true, query_cache_min_query_duration = 3000, query_cache_ttl = 43200,
     						query_cache_store_results_of_queries_with_nondeterministic_functions = true`, pricePeriod, pricePeriod, category, i, i).

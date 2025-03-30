@@ -25,6 +25,7 @@ func GetAllMigrations() []*Migration {
 		NewMigration(5, Migration005AddSpamFlag),
 		NewMigration(6, Migration006AddGoverlandIndexAdditive),
 		NewMigration(7, Migration007TokenPriceTable),
+		NewMigration(8, Migration008AddWhitelistDao),
 	}
 }
 

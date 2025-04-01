@@ -2,7 +2,6 @@ package token
 
 import (
 	"github.com/goverland-labs/goverland-platform-events/events/core"
-	"time"
 )
 
 type ClickhouseAdapter struct {
@@ -16,7 +15,7 @@ func (c ClickhouseAdapter) Values(v *core.TokenPricePayload) []any {
 
 	return []any{
 		v.DaoID,
-		time.Now(),
+		v.Time,
 		float32(v.Price),
 	}
 }

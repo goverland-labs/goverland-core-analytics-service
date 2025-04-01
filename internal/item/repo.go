@@ -511,7 +511,7 @@ func (r *Repo) GetTopDaos(category string, interval string, pricePeriod string) 
     						select dao_id, max(created_at) as period_end, argMax(price, created_at) as current_price, 
 								   min(created_day) as period_start, argMin(price, created_at) as period_start_price
     						from token_price where created_at <= now() and created_at >= multiIf(?='1W', date_sub(WEEK, 1, now()), ?='1M', date_sub(MONTH, 1, now()), date_sub(HOUR, 24, now()))
-							and dao_id in (select dao_id from whitelist where feature_type='TOP' and disabled=false) 
+							and dao_id in (select dao_id from (select w.dao_id, argMax(w.disabled, w.created_at) as disabled from whitelist w where w.feature_type='TOP' group by w.dao_id) s where s.disabled = false) 
 							and multiIf('new'=?, dao_id in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())), 
 												 dao_id not in (select distinct dao_id from daos_raw where event_type='dao_created' and created_day >= date_sub(MONTH , 3, today())))
 							group by dao_id
